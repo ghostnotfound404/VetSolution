@@ -1,0 +1,180 @@
+/* Estilos generales para la página de clientes */
+.clientes {
+    background-color: var(--gris_claro);
+    padding: 20px;
+}
+
+.clientes h2 {
+    color: var(--gris);
+    margin-bottom: 30px;
+}
+
+/* Estilo del formulario de búsqueda */
+.clientes h4 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: var(--gris);
+}
+
+/* Estilos específicos para búsqueda de clientes - usando estilos globales */
+/* 
+.clientes .search-section h4 {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--form-text);
+}
+
+.clientes .search-section .form-control {
+    height: 38px;
+    font-size: 0.9rem;
+}
+
+.clientes .search-section .btn {
+    height: 38px;
+    font-size: 0.9rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.clientes .search-section .row.align-items-end {
+    align-items: flex-end !important;
+}
+
+.clientes .search-section .d-flex.gap-2 {
+    margin-top: 0.25rem;
+}
+*/
+
+.clientes .form-label {
+    font-weight: bold;
+}
+
+.clientes .form-control {
+    margin-bottom: 15px;
+}
+
+/* .clientes .btn-secondary {
+    background-color: var(--gris);
+    color: var(--blanco);
+} */
+
+.clientes .btn-primary {
+    background-color: var(--azul);
+    color: var(--blanco);
+}
+
+.clientes table {
+    background-color: var(--blanco);
+    margin-top: 20px;
+}
+
+.clientes table th,
+.clientes table td {
+    text-align: center;
+    padding: 12px;
+}
+
+.clientes table tbody tr:nth-child(even) {
+    background-color: var(--gris_claro);
+}
+
+/* Estilos para los botones */
+.clientes .btn {
+    margin: 5px;
+}
+
+.clientes .btn-success {
+    background-color: var(--success);
+    color: var(--blanco);
+    border: none;
+}
+
+.clientes .btn-success:hover {
+    background-color: var(--verde-hover);
+}
+
+/* Estilos para la sección de búsqueda y botón crear */
+.clientes .d-flex.gap-2 {
+    gap: 10px !important;
+}
+
+/* Estilo para los resultados de búsqueda */
+.clientes h5 {
+    margin-top: 20px;
+    color: var(--gris);
+}
+
+.clientes .search-result {
+    margin-top: 30px;
+}
+
+/* Estilos para la sección de auditoría */
+.clientes .btn-group .btn {
+    margin: 0;
+}
+
+.clientes .btn-outline-success {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.clientes .btn-outline-success:hover {
+    background-color: var(--success);
+    color: var(--blanco);
+}
+
+.clientes .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.clientes .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: var(--blanco);
+}
+
+/* Estilos para el modal */
+.modal-header {
+    background-color: var(--azul);
+    color: var(--blanco);
+}
+
+.modal-title {
+    color: var(--blanco);
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+/* Estilos para validación de formularios */
+.is-invalid {
+    border-color: var(--danger);
+}
+
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--danger);
+}
+
+.form-text {
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--form-text-light);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .clientes .row .col-md-8,
+    .clientes .row .col-md-4 {
+        margin-bottom: 15px;
+    }
+    
+    .clientes .text-end {
+        text-align: left !important;
+    }
+}

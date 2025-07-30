@@ -1,0 +1,11 @@
+.ventas {
+    background-color: var(--gris_claro);
+}
+
+.ventas h2 {
+    color: var(--gris);
+}
+
+.ventas .btn {
+    margin: 5px;
+}

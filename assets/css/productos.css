@@ -1,0 +1,45 @@
+.productos {
+    background-color: var(--gris_claro);
+}
+
+.productos h2 {
+    color: var(--gris);
+}
+
+.productos table {
+    background-color: var(--blanco);
+}
+
+.productos .btn {
+    margin: 5px;
+}
+
+/* Estilos específicos para búsqueda de productos - usando estilos globales */
+/*
+.productos .search-section h4 {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--form-text);
+}
+
+.productos .search-section .form-control {
+    height: 38px;
+    font-size: 0.9rem;
+}
+
+.productos .search-section .btn {
+    height: 38px;
+    font-size: 0.9rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.productos .search-section .row.align-items-end {
+    align-items: flex-end !important;
+}
+
+.productos .search-section .d-flex.gap-2 {
+    margin-top: 0.25rem;
+}
+*/

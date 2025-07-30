@@ -1,0 +1,269 @@
+:root {
+    --blanco: #FFFFFF;
+    --negro: #000000;
+    --azul: #2980b9;
+    --azul-oscuro: #1a5276;
+    --gris: #34495e;
+    --gris-claro: #ecf0f1;
+    --gris-medio: #c7bdc4;
+    --amarillo: #f1c40f;
+    --rojo: #e74c3c;
+    --verde: #2ecc71;
+    
+    /* Variables adicionales para mascotas */
+    --verde-oscuro: #2c5d31;
+    --verde-medio: #4a6741;
+    --verde-bootstrap: #28a745;
+    --verde-hover: #218838;
+    --verde-border: #1e7e34;
+    --verde-agua: #20c997;
+    
+    /* Variables para estados */
+    --success: #28a745;
+    --success-light: #d1eddb;
+    --success-text: #155724;
+    --info: #17a2b8;
+    --info-light: #d1ecf1;
+    --info-text: #0c5460;
+    --info-hover: #138496;
+    --info-border: #117a8b;
+    --warning: #ffc107;
+    --warning-light: #fff3cd;
+    --warning-text: #856404;
+    --warning-hover: #e0a800;
+    --warning-border: #d39e00;
+    --danger: #dc3545;
+    
+    /* Variables para formularios */
+    --form-border: #e9ecef;
+    --form-border-focus: #ced4da;
+    --form-bg: #f8f9fa;
+    --form-text: #495057;
+    --form-text-light: #6c757d;
+    
+    /* Variables para botones de búsqueda */
+    --search-btn-bg: #6c757d;
+    --search-btn-hover: #545b62;
+    --search-btn-border: #6c757d;
+    --search-btn-text: #ffffff;
+    
+    /* Variables para sombras */
+    --shadow-light: rgba(0, 0, 0, 0.1);
+    --shadow-medium: rgba(0, 0, 0, 0.3);
+    --shadow-success: rgba(40, 167, 69, 0.15);
+    --shadow-success-focus: rgba(40, 167, 69, 0.25);
+    --shadow-danger: rgba(220, 53, 69, 0.15);
+}
+
+/* Estilo general */
+body {
+    background-color: var(--gris-claro);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+}
+
+/* Barra lateral */
+.bg-dark {
+    background-color: var(--gris) !important;
+}
+
+/* Título "Veterinaria" agrandado */
+.bg-dark .fs-4 {
+    font-size: 1.7rem !important; /* MODIFICADO */
+}
+
+.nav-pills {
+    padding-top: 10px;
+}
+
+/* Enlaces de navegación agrandados */
+.nav-link {
+    color: var(--blanco);
+    border-radius: 0;
+    padding: 16px 20px; /* MODIFICADO: Más espacio interno */
+    margin: 4px 0;      /* MODIFICADO: Más separación entre elementos */
+    font-size: 1.1rem;  /* MODIFICADO: Texto más grande */
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+}
+
+.nav-link:hover {
+    background-color: var(--azul-oscuro);
+    color: var(--blanco);
+}
+
+.nav-link.active {
+    background-color: var(--amarillo);
+    color: var(--azul);
+    font-weight: 500;
+}
+
+/* Íconos agrandados */
+.nav-link i {
+    width: 35px;         /* MODIFICADO: Más espacio para el ícono */
+    font-size: 1.3rem;   /* MODIFICADO: Ícono más grande */
+    text-align: center;
+}
+
+/* Contenido principal */
+#contenido {
+    background-color: var(--blanco);
+    min-height: 100vh;
+}
+
+/* Tarjetas */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Estilos globales para secciones de búsqueda */
+.search-section {
+    background-color: var(--blanco);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px var(--shadow-light);
+}
+
+.search-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--form-text);
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.search-section .row.align-items-end {
+    align-items: flex-end !important;
+}
+
+.search-section .form-control {
+    height: 38px;
+    font-size: 0.9rem;
+    border: 2px solid var(--form-border);
+    border-radius: 6px;
+    margin-bottom: 0;
+}
+
+.search-section .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.search-section .d-flex.gap-2 {
+    gap: 0.5rem !important;
+    align-items: center;
+}
+
+.search-section .btn {
+    height: 38px;
+    font-size: 0.9rem;
+    padding: 0 15px;
+    border-radius: 6px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+/* Estilos globales para botones de búsqueda */
+.search-section .btn-secondary {
+    background-color: var(--search-btn-bg);
+    border-color: var(--search-btn-border);
+    color: var(--search-btn-text);
+    font-weight: 500;
+}
+
+.search-section .btn-secondary:hover {
+    background-color: var(--search-btn-hover);
+    border-color: var(--search-btn-hover);
+    color: var(--search-btn-text);
+}
+
+.search-section .btn-secondary:focus {
+    background-color: var(--search-btn-hover);
+    border-color: var(--search-btn-hover);
+    color: var(--search-btn-text);
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+}
+
+/* Estilos para botones "Limpiar" en secciones de búsqueda */
+.search-section .btn-outline-secondary {
+    color: var(--search-btn-bg);
+    border-color: var(--search-btn-bg);
+    font-weight: 500;
+}
+
+.search-section .btn-outline-secondary:hover {
+    background-color: var(--search-btn-bg);
+    border-color: var(--search-btn-bg);
+    color: var(--search-btn-text);
+}
+
+.search-section .btn-outline-secondary:focus {
+    background-color: var(--search-btn-bg);
+    border-color: var(--search-btn-bg);
+    color: var(--search-btn-text);
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 767.98px) {
+    .nav-link {
+        padding: 10px 15px;
+    }
+    
+    #sidebarMenu {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        background-color: var(--gris);
+    }
+    
+    .min-vh-100 {
+        min-height: auto !important;
+    }
+    
+    /* Responsive para secciones de búsqueda */
+    .search-section .row {
+        flex-direction: column !important;
+        gap: 15px;
+    }
+    
+    .search-section .col-md-8,
+    .search-section .col-md-4 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: none !important;
+    }
+    
+    .search-section .text-end {
+        text-align: center !important;
+    }
+    
+    .search-section .d-flex.gap-2 {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .search-section .btn {
+        min-width: 80px;
+    }
+}
+
+@media (min-width: 768px) {
+    .d-md-inline {
+        display: inline !important;
+    }
+}
