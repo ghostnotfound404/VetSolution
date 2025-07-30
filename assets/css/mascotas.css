@@ -1,181 +1,405 @@
-/* Estilos específicos para el módulo de mascotas */
+/* Estilos modernos para la página de mascotas */
+.mascotas {
+    background-color: #f8f9fa;
+    padding: 20px;
+}
+
 .mascotas h2 {
-    color: var(--verde-oscuro);
-    margin-bottom: 30px;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    margin-top: 0;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.mascotas h2 i {
+    color: #28a745;
+}
+
+/* Sección de búsqueda moderna */
+.search-section {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    color: white;
+}
+
+.search-section h4 {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.search-section .form-control {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-size: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.search-section .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.25);
+    border-color: transparent;
+}
+
+.search-section .btn {
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.search-section .btn-primary {
+    background: #007bff;
+    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+}
+
+.search-section .btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,123,255,0.4);
+}
+
+.search-section .btn-success {
+    background: #28a745;
+    box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+}
+
+.search-section .btn-success:hover {
+    background: #1e7e34;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40,167,69,0.4);
+}
+
+.search-section .btn-outline-secondary {
+    color: white;
+    border-color: white;
+    background: transparent;
+}
+
+.search-section .btn-outline-secondary:hover {
+    background: white;
+    color: #6c757d;
+    border-color: white;
+}
+
+/* Sección de auditoría */
+.audit-section {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.audit-section h4 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.audit-section h4 i {
+    color: #17a2b8;
+}
+
+.audit-section .form-select {
+    border-radius: 8px;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    font-size: 1rem;
+}
+
+.audit-section .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40,167,69,0.25);
+}
+
+.audit-section .btn {
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.audit-section .btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Lista de mascotas */
+.mascotas-list {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.mascotas-list h4 {
+    color: #2c3e50;
     font-weight: 600;
 }
 
-.mascotas h4 {
-    color: var(--verde-medio);
-    margin-bottom: 20px;
-    font-weight: 500;
+.mascotas-list h4 i {
+    color: #28a745;
 }
 
-/* Estilos para la sección de búsqueda */
-.mascotas .form-control:focus {
-    border-color: var(--verde-bootstrap);
-    box-shadow: 0 0 0 0.2rem var(--shadow-success-focus);
+.mascotas-list .badge {
+    font-size: 0.9rem;
+    padding: 8px 12px;
 }
 
-.mascotas .btn-success {
-    background-color: var(--verde-bootstrap);
-    border-color: var(--verde-bootstrap);
-    font-weight: 500;
-    padding: 8px 20px;
-}
-
-.mascotas .btn-success:hover {
-    background-color: var(--verde-hover);
-    border-color: var(--verde-border);
-}
-
-/* Estilos para la tabla */
-.mascotas .table {
-    background-color: var(--blanco);
-    border-radius: 8px;
+/* Tabla moderna */
+.table {
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 2px 10px var(--shadow-light);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    margin-bottom: 0;
 }
 
-.mascotas .table thead {
-    background-color: var(--form-bg);
+.table-dark {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
 }
 
-.mascotas .table th {
-    border-top: none;
-    color: var(--form-text);
+.table-dark th {
+    border: none;
+    padding: 15px 12px;
     font-weight: 600;
     text-transform: uppercase;
     font-size: 0.85rem;
     letter-spacing: 0.5px;
-    padding: 15px 10px;
 }
 
-.mascotas .table td {
+.table td {
+    padding: 15px 12px;
     vertical-align: middle;
-    padding: 12px 10px;
+    border-top: 1px solid #e9ecef;
 }
 
-.mascotas .badge {
-    font-size: 0.75rem;
-    padding: 5px 10px;
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+    transition: all 0.2s ease;
 }
 
-/* Estilos para el modal */
-.mascotas .modal-content {
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.02);
+}
+
+/* Botones de acción */
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    margin-right: 5px;
+    transition: all 0.3s ease;
+}
+
+.btn-warning {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255,193,7,0.3);
+}
+
+.btn-info {
+    background: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.btn-info:hover {
+    background: #138496;
+    border-color: #117a8b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23,162,184,0.3);
+}
+
+/* Modal moderno */
+.modal-content {
     border-radius: 15px;
     border: none;
-    box-shadow: 0 10px 30px var(--shadow-medium);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
 }
 
-.mascotas .modal-header {
-    background: linear-gradient(135deg, var(--verde-bootstrap) 0%, var(--verde-agua) 100%);
-    color: var(--blanco);
+.modal-header.bg-primary {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
     border-radius: 15px 15px 0 0;
-    border-bottom: none;
-    padding: 20px 30px;
+    padding: 20px 25px;
 }
 
-.mascotas .modal-title {
+.modal-title {
     font-weight: 600;
     font-size: 1.25rem;
 }
 
-.mascotas .btn-close {
-    filter: brightness(0) invert(1);
+.modal-body {
+    padding: 25px;
 }
 
-.mascotas .modal-body {
-    padding: 30px;
+.modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid #e9ecef;
 }
 
-.mascotas .modal-footer {
-    border-top: 1px solid var(--form-border);
-    padding: 20px 30px;
-}
-
-/* Estilos para el formulario del modal */
-.mascotas .form-label {
+/* Formulario en modal */
+.modal .form-label {
     font-weight: 600;
-    color: var(--form-text);
+    color: #2c3e50;
     margin-bottom: 8px;
 }
 
-.mascotas .input-group-text {
-    background-color: var(--form-bg);
-    border-color: var(--form-border-focus);
-    color: var(--form-text-light);
-}
-
-.mascotas .form-control,
-.mascotas .form-select {
-    border: 2px solid var(--form-border);
+.modal .form-control,
+.modal .form-select {
+    border: 2px solid #e9ecef;
     border-radius: 8px;
-    padding: 10px 15px;
+    padding: 12px 15px;
     transition: all 0.3s ease;
 }
 
-.mascotas .form-control:focus,
-.mascotas .form-select:focus {
-    border-color: var(--verde-bootstrap);
-    box-shadow: 0 0 0 0.2rem var(--shadow-success);
+.modal .form-control:focus,
+.modal .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40,167,69,0.25);
 }
 
-.mascotas .form-control.is-invalid,
-.mascotas .form-select.is-invalid {
-    border-color: var(--danger);
-    box-shadow: 0 0 0 0.2rem var(--shadow-danger);
+.modal .form-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 5px;
 }
 
-.mascotas .form-control.is-valid,
-.mascotas .form-select.is-valid {
-    border-color: var(--verde-bootstrap);
-    box-shadow: 0 0 0 0.2rem var(--shadow-success);
+/* Alertas */
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 15px 20px;
+    margin-top: 20px;
 }
 
-/* Estilos para los resultados de búsqueda de propietario */
-.mascotas .list-group {
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+/* Resultados de búsqueda */
+.search-result {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.search-result h5 {
+    color: white;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mascotas {
+        padding: 15px;
+    }
+    
+    .search-section,
+    .audit-section,
+    .mascotas-list {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+    }
+    
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+}
+
+/* Estilos específicos para mascotas */
+.mascotas .badge.bg-success {
+    background-color: #28a745 !important;
+}
+
+.mascotas .text-danger {
+    color: #dc3545 !important;
+}
+
+/* Input groups */
+.input-group-text {
+    background-color: #e9ecef;
+    border: 2px solid #e9ecef;
+    border-radius: 8px 0 0 8px;
+}
+
+.input-group .form-control:focus + .input-group-text,
+.input-group-text + .form-control:focus {
+    border-color: #28a745;
+}
+
+/* Estilos para botones de formulario */
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #4e555b;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40,167,69,0.3);
+}
+
+/* Buscar propietario */
+#resultados_propietario {
     max-height: 200px;
     overflow-y: auto;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px var(--shadow-light);
 }
 
-.mascotas .list-group-item {
-    border-left: none;
-    border-right: none;
-    transition: all 0.3s ease;
-}
-
-.mascotas .list-group-item:hover {
-    background-color: var(--form-bg);
+#resultados_propietario .list-group-item {
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.mascotas .list-group-item:first-child {
-    border-top: none;
-    border-radius: 8px 8px 0 0;
-}
 
-.mascotas .list-group-item:last-child {
-    border-bottom: none;
-    border-radius: 0 0 8px 8px;
-}
-
-/* Estilos para los botones de acción */
-.mascotas .btn-warning {
-    background-color: var(--warning);
-    border-color: var(--warning);
-    color: var(--negro);
-}
-
-.mascotas .btn-warning:hover {
-    background-color: var(--warning-hover);
-    border-color: var(--warning-border);
-    color: var(--negro);
-}
-
-.mascotas .btn-info {
     background-color: var(--info);
     border-color: var(--info);
 }

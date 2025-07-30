@@ -14,29 +14,39 @@ $clientes_result = $conn->query($clientes_sql);
 ?>
 
 <div class="container mascotas">
-    <h2>Gestionar Mascotas</h2>
+    <h2><i class="fas fa-paw me-2"></i>Gestionar Mascotas</h2>
 
-    <!-- Sección para Buscar Mascota y Crear Nueva -->
-    <div class="mb-4 search-section">
-        <div class="row align-items-end">
-            <div class="col-md-8">
-                <h4>Buscar Mascota</h4>
-                <form method="GET" class="d-flex gap-2" id="formBuscarMascota">
+    <!-- Sección de Búsqueda y Creación -->
+    <div class="search-section mb-4">
+        <div class="search-header">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                <h4><i class="fas fa-search me-2"></i>Buscar Mascota</h4>
+                
+                <div class="d-flex flex-grow-1 flex-column flex-md-row gap-2">
                     <div class="flex-grow-1">
-                        <input type="text" class="form-control" id="buscar_mascota" name="buscar_mascota" 
-                               placeholder="Buscar por nombre de mascota o propietario..." 
-                               value="<?php echo isset($_GET['buscar_mascota']) ? htmlspecialchars($_GET['buscar_mascota']) : ''; ?>">
+                        <form method="GET" class="d-flex" id="formBuscarMascota">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="buscar_mascota" name="buscar_mascota" 
+                                       placeholder="Buscar por nombre de mascota o propietario..." 
+                                       value="<?php echo isset($_GET['buscar_mascota']) ? htmlspecialchars($_GET['buscar_mascota']) : ''; ?>">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <?php if (isset($_GET['buscar_mascota'])): ?>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaMascota()">
+                                        Limpiar
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </form>
                     </div>
-                    <button type="submit" class="btn btn-secondary">Buscar</button>
-                    <?php if (isset($_GET['buscar_mascota'])): ?>
-                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaMascota()">Limpiar</button>
-                    <?php endif; ?>
-                </form>
-            </div>
-            <div class="col-md-4 text-end">
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevaMascotaModal">
-                    <i class="fas fa-plus"></i> Crear Nueva Mascota
-                </button>
+                    
+                    <div class="flex-shrink-0">
+                        <button type="button" class="btn btn-success h-100" data-bs-toggle="modal" data-bs-target="#nuevaMascotaModal">
+                            <i class="fas fa-plus"></i> Nueva Mascota
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -61,10 +71,11 @@ $clientes_result = $conn->query($clientes_sql);
             $search_result = $stmt->get_result();
             
             if ($search_result->num_rows > 0) {
+                echo "<div class='search-result mt-3'>";
                 echo "<h5>Resultados de la búsqueda para: <strong>".htmlspecialchars($buscar_mascota)."</strong></h5>";
                 echo "<div class='table-responsive'>";
-                echo "<table class='table table-striped'>";
-                echo "<thead><tr><th>#HC</th><th>Nombre</th><th>Especie</th><th>Raza</th><th>Género</th><th>Fecha de Nacimiento</th><th>Cliente</th><th>Estado</th><th>Opciones</th></tr></thead>";
+                echo "<table class='table table-striped table-hover'>";
+                echo "<thead class='table-dark'><tr><th>#HC</th><th>Nombre</th><th>Especie</th><th>Raza</th><th>Género</th><th>Fecha Nac.</th><th>Propietario</th><th>Estado</th><th>Acciones</th></tr></thead>";
                 echo "<tbody>";
                 while ($row = $search_result->fetch_assoc()) {
                     $fechaNacimiento = date('d/m/Y', strtotime($row['fecha_nacimiento']));
@@ -85,19 +96,20 @@ $clientes_result = $conn->query($clientes_sql);
                         <td>$nombreCliente</td>
                         <td><span class='badge bg-success'>$estado</span></td>
                         <td>
-                            <button class='btn btn-warning btn-sm' onclick='editarMascota({$row['id_mascota']})'>
-                                <i class='fas fa-edit'></i> Editar
+                            <button class='btn btn-sm btn-warning' onclick='editarMascota({$row['id_mascota']})'>
+                                <i class='fas fa-edit'></i>
                             </button>
-                            <button class='btn btn-info btn-sm' onclick='verHistoria({$row['id_mascota']})'>
-                                <i class='fas fa-file-medical'></i> Historia
+                            <button class='btn btn-sm btn-info' onclick='verHistoria({$row['id_mascota']})'>
+                                <i class='fas fa-file-medical'></i>
                             </button>
                         </td>
                     </tr>";
                 }
                 echo "</tbody></table>";
                 echo "</div>";
+                echo "</div>";
             } else {
-                echo "<div class='alert alert-info'>No se encontraron resultados para '<strong>".htmlspecialchars($buscar_mascota)."</strong>'.</div>";
+                echo "<div class='alert alert-info mt-3'>No se encontraron resultados para '<strong>".htmlspecialchars($buscar_mascota)."</strong>'.</div>";
             }
             
             $stmt->close();
@@ -106,10 +118,10 @@ $clientes_result = $conn->query($clientes_sql);
     </div>
 
     <!-- Sección de Auditoría -->
-    <div class="mb-4">
-        <h4>Auditoría</h4>
+    <div class="audit-section mb-4">
+        <h4><i class="fas fa-clipboard-check me-2"></i>Auditoría</h4>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6 mb-3 mb-md-0">
                 <select class="form-select" id="auditoria_select">
                     <option value="">Seleccionar tipo de auditoría...</option>
                     <option value="mascotas_general">Mascotas - Reporte General</option>
@@ -119,7 +131,7 @@ $clientes_result = $conn->query($clientes_sql);
                 </select>
             </div>
             <div class="col-md-6">
-                <div class="btn-group" role="group">
+                <div class="btn-group w-100" role="group">
                     <button type="button" class="btn btn-outline-success" onclick="descargarExcel()">
                         <i class="fas fa-file-excel"></i> Descargar Excel
                     </button>
@@ -133,22 +145,26 @@ $clientes_result = $conn->query($clientes_sql);
 
     <!-- Lista de todas las mascotas -->
     <?php if (!isset($_GET['buscar_mascota'])): ?>
-    <div class="mb-4">
-        <h4>Todas las Mascotas</h4>
+    <div class="mascotas-list">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="fas fa-list me-2"></i>Todas las Mascotas</h4>
+            <span class="badge bg-primary">Total: <?php echo $result->num_rows; ?></span>
+        </div>
+        
         <?php if ($result->num_rows > 0): ?>
             <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
                         <tr>
                             <th>#HC</th>
                             <th>Nombre</th>
                             <th>Especie</th>
                             <th>Raza</th>
                             <th>Género</th>
-                            <th>Fecha de Nacimiento</th>
-                            <th>Cliente</th>
+                            <th>Fecha Nac.</th>
+                            <th>Propietario</th>
                             <th>Estado</th>
-                            <th>Opciones</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -163,17 +179,18 @@ $clientes_result = $conn->query($clientes_sql);
                             <td><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></td>
                             <td><span class="badge bg-success"><?php echo htmlspecialchars($row['estado']); ?></span></td>
                             <td>
-                                <button class="btn btn-warning btn-sm" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)">
-                                    <i class="fas fa-edit"></i> Editar
+                                <button class="btn btn-sm btn-warning" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)">
+                                    <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-info btn-sm" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)">
-                                    <i class="fas fa-file-medical"></i> Historia
+                                <button class="btn btn-sm btn-info" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)">
+                                    <i class="fas fa-file-medical"></i>
                                 </button>
                             </td>
                         </tr>
                         <?php endwhile; ?>
                     </tbody>
                 </table>
+            </div>
         <?php else: ?>
             <div class="alert alert-info">No hay mascotas registradas.</div>
         <?php endif; ?>
@@ -184,18 +201,20 @@ $clientes_result = $conn->query($clientes_sql);
     <div class="modal fade" id="nuevaMascotaModal" tabindex="-1" aria-labelledby="nuevaMascotaModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="nuevaMascotaModalLabel">Crear Nueva Mascota</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="nuevaMascotaModalLabel">
+                        <i class="fas fa-paw me-2"></i>Nueva Mascota
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form action="modules/mascotas.php" method="POST" id="formNuevaMascota">
                         <div class="row">
                             <div class="col-md-12 mb-3">
-                                <label for="buscar_propietario" class="form-label">Buscar y seleccionar propietario <span class="text-danger">*</span></label>
+                                <label for="buscar_propietario" class="form-label">Propietario <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                    <input type="text" class="form-control" id="buscar_propietario" placeholder="Buscar por nombre del propietario...">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control" id="buscar_propietario" placeholder="Buscar propietario...">
                                 </div>
                                 <input type="hidden" id="id_cliente" name="id_cliente" required>
                                 <div id="resultados_propietario" class="mt-2"></div>
@@ -204,14 +223,14 @@ $clientes_result = $conn->query($clientes_sql);
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="nombre_mascota" class="form-label">Nombre de la mascota <span class="text-danger">*</span></label>
+                                <label for="nombre_mascota" class="form-label">Nombre <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-paw"></i></span>
                                     <input type="text" class="form-control" id="nombre_mascota" name="nombre" required>
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento <span class="text-danger">*</span></label>
+                                <label for="fecha_nacimiento" class="form-label">Fecha Nacimiento <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-calendar"></i></span>
                                     <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" required>
@@ -223,32 +242,33 @@ $clientes_result = $conn->query($clientes_sql);
                             <div class="col-md-6 mb-3">
                                 <label for="especie" class="form-label">Especie <span class="text-danger">*</span></label>
                                 <select class="form-select" id="especie" name="especie" required>
-                                    <option value="">Buscar especie...</option>
+                                    <option value="">Seleccionar...</option>
                                     <option value="Canino">Canino</option>
                                     <option value="Felino">Felino</option>
+                                    <option value="Ave">Ave</option>
+                                    <option value="Roedor">Roedor</option>
                                     <option value="Otro">Otro</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="raza" class="form-label">Raza</label>
                                 <select class="form-select" id="raza" name="raza">
-                                    <option value="">Buscar raza...</option>
-                                    <!-- Las razas se cargarán dinámicamente según la especie -->
+                                    <option value="">Seleccionar...</option>
                                 </select>
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="genero" class="form-label">Sexo <span class="text-danger">*</span></label>
+                                <label for="genero" class="form-label">Género <span class="text-danger">*</span></label>
                                 <select class="form-select" id="genero" name="genero" required>
-                                    <option value="">Selecciona una opción</option>
+                                    <option value="">Seleccionar...</option>
                                     <option value="Macho">Macho</option>
                                     <option value="Hembra">Hembra</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="esterilizado" class="form-label">¿Ha sido esterilizado?</label>
+                                <label for="esterilizado" class="form-label">Esterilizado</label>
                                 <select class="form-select" id="esterilizado" name="esterilizado">
                                     <option value="No">No</option>
                                     <option value="Si">Sí</option>
@@ -258,8 +278,12 @@ $clientes_result = $conn->query($clientes_sql);
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" form="formNuevaMascota" class="btn btn-success">Guardar Mascota</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" form="formNuevaMascota" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i> Guardar
+                    </button>
                 </div>
             </div>
         </div>
@@ -296,7 +320,7 @@ $clientes_result = $conn->query($clientes_sql);
         }
         
         if (empty($genero)) {
-            $errores[] = "El sexo es obligatorio";
+            $errores[] = "El género es obligatorio";
         }
 
         if (empty($errores)) {
@@ -425,12 +449,13 @@ function seleccionarPropietario(id, nombre) {
 function cargarRazas(especie) {
     var razas = {
         'Canino': ['Labrador', 'Golden Retriever', 'Pastor Alemán', 'Bulldog', 'Beagle', 'Poodle', 'Rottweiler', 'Yorkshire', 'Chihuahua', 'Mestizo'],
-        'Felino': ['Persa', 'Siamés', 'Maine Coon', 'Británico', 'Ragdoll', 'Bengalí', 'Abisinio', 'Mestizo']
-
+        'Felino': ['Persa', 'Siamés', 'Maine Coon', 'Británico', 'Ragdoll', 'Bengalí', 'Abisinio', 'Mestizo'],
+        'Ave': ['Canario', 'Periquito', 'Loro', 'Cacatúa', 'Cotorra'],
+        'Roedor': ['Hamster', 'Conejo', 'Cobayo', 'Chinchilla']
     };
     
     var select = $('#raza');
-    select.html('<option value="">Buscar raza...</option>');
+    select.html('<option value="">Seleccionar...</option>');
     
     if (razas[especie]) {
         razas[especie].forEach(function(raza) {

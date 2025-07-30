@@ -1,87 +1,341 @@
-/* Estilos generales para la página de clientes */
+/* Estilos modernos para la página de clientes */
 .clientes {
-    background-color: var(--gris_claro);
+    background-color: #f8f9fa;
     padding: 20px;
 }
 
 .clientes h2 {
-    color: var(--gris);
-    margin-bottom: 30px;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    margin-top: 0;
+    font-weight: 700;
+    font-size: 2rem;
 }
 
-/* Estilo del formulario de búsqueda */
-.clientes h4 {
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-    color: var(--gris);
+.clientes h2 i {
+    color: #007bff;
 }
 
-/* Estilos específicos para búsqueda de clientes - usando estilos globales */
-/* 
-.clientes .search-section h4 {
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
+/* Sección de búsqueda moderna */
+.search-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    color: white;
+}
+
+.search-section h4 {
+    color: white;
     font-weight: 600;
-    color: var(--form-text);
+    margin-bottom: 20px;
 }
 
-.clientes .search-section .form-control {
-    height: 38px;
+.search-section .form-control {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-size: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.search-section .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.25);
+    border-color: transparent;
+}
+
+.search-section .btn {
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.search-section .btn-primary {
+    background: #007bff;
+    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+}
+
+.search-section .btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,123,255,0.4);
+}
+
+.search-section .btn-success {
+    background: #28a745;
+    box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+}
+
+.search-section .btn-success:hover {
+    background: #1e7e34;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40,167,69,0.4);
+}
+
+.search-section .btn-outline-secondary {
+    color: white;
+    border-color: white;
+    background: transparent;
+}
+
+.search-section .btn-outline-secondary:hover {
+    background: white;
+    color: #6c757d;
+    border-color: white;
+}
+
+/* Sección de auditoría */
+.audit-section {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.audit-section h4 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.audit-section h4 i {
+    color: #17a2b8;
+}
+
+.audit-section .form-select {
+    border-radius: 8px;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    font-size: 1rem;
+}
+
+.audit-section .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+
+.audit-section .btn {
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.audit-section .btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Lista de clientes */
+.clients-list {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.clients-list h4 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.clients-list h4 i {
+    color: #28a745;
+}
+
+.clients-list .badge {
     font-size: 0.9rem;
+    padding: 8px 12px;
 }
 
-.clientes .search-section .btn {
-    height: 38px;
-    font-size: 0.9rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+/* Tabla moderna */
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    margin-bottom: 0;
 }
 
-.clientes .search-section .row.align-items-end {
-    align-items: flex-end !important;
+.table-dark {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
 }
 
-.clientes .search-section .d-flex.gap-2 {
-    margin-top: 0.25rem;
-}
-*/
-
-.clientes .form-label {
-    font-weight: bold;
-}
-
-.clientes .form-control {
-    margin-bottom: 15px;
+.table-dark th {
+    border: none;
+    padding: 15px 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
 }
 
-/* .clientes .btn-secondary {
-    background-color: var(--gris);
-    color: var(--blanco);
-} */
-
-.clientes .btn-primary {
-    background-color: var(--azul);
-    color: var(--blanco);
+.table td {
+    padding: 15px 12px;
+    vertical-align: middle;
+    border-top: 1px solid #e9ecef;
 }
 
-.clientes table {
-    background-color: var(--blanco);
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.02);
+}
+
+/* Botones de acción */
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    margin-right: 5px;
+    transition: all 0.3s ease;
+}
+
+.btn-warning {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255,193,7,0.3);
+}
+
+.btn-info {
+    background: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.btn-info:hover {
+    background: #138496;
+    border-color: #117a8b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23,162,184,0.3);
+}
+
+/* Modal moderno */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.modal-header.bg-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border-radius: 15px 15px 0 0;
+    padding: 20px 25px;
+}
+
+.modal-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Formulario en modal */
+.modal .form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+.modal .form-control,
+.modal .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+}
+
+.modal .form-control:focus,
+.modal .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+
+.modal .form-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 5px;
+}
+
+/* Alertas */
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 15px 20px;
     margin-top: 20px;
 }
 
-.clientes table th,
-.clientes table td {
-    text-align: center;
-    padding: 12px;
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
 }
 
-.clientes table tbody tr:nth-child(even) {
-    background-color: var(--gris_claro);
+/* Resultados de búsqueda */
+.search-result {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
 }
 
-/* Estilos para los botones */
-.clientes .btn {
-    margin: 5px;
+.search-result h5 {
+    color: white;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .clientes {
+        padding: 15px;
+    }
+    
+    .search-section,
+    .audit-section,
+    .clients-list {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+    }
+    
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
 }
 
 .clientes .btn-success {

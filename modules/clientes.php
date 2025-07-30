@@ -7,29 +7,39 @@ $result = $conn->query($sql);
 ?>
 
 <div class="container clientes">
-    <h2>Gestionar Clientes</h2>
+    <h2><i class="fas fa-users me-2"></i>Gestionar Clientes</h2>
 
-    <!-- Sección para Buscar Cliente y Crear Nuevo -->
-    <div class="mb-4 search-section">
-        <div class="row align-items-end">
-            <div class="col-md-8">
-                <h4>Buscar Cliente</h4>
-                <form method="GET" class="d-flex gap-2" id="formBuscarCliente">
+    <!-- Sección de Búsqueda y Creación -->
+    <div class="search-section mb-4">
+        <div class="search-header">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                <h4><i class="fas fa-search me-2"></i>Buscar Cliente</h4>
+                
+                <div class="d-flex flex-grow-1 flex-column flex-md-row gap-2">
                     <div class="flex-grow-1">
-                        <input type="text" class="form-control" id="buscar_nombre" name="buscar_nombre" 
-                               placeholder="Buscar por nombre o apellido..." 
-                               value="<?php echo isset($_GET['buscar_nombre']) ? htmlspecialchars($_GET['buscar_nombre']) : ''; ?>">
+                        <form method="GET" class="d-flex" id="formBuscarCliente">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="buscar_nombre" name="buscar_nombre" 
+                                       placeholder="Buscar por nombre o apellido..." 
+                                       value="<?php echo isset($_GET['buscar_nombre']) ? htmlspecialchars($_GET['buscar_nombre']) : ''; ?>">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <?php if (isset($_GET['buscar_nombre'])): ?>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusqueda()">
+                                        Limpiar
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </form>
                     </div>
-                    <button type="submit" class="btn btn-secondary">Buscar</button>
-                    <?php if (isset($_GET['buscar_nombre'])): ?>
-                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusqueda()">Limpiar</button>
-                    <?php endif; ?>
-                </form>
-            </div>
-            <div class="col-md-4 text-end">
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevoClienteModal">
-                    <i class="fas fa-plus"></i> Crear Nuevo Cliente
-                </button>
+                    
+                    <div class="flex-shrink-0">
+                        <button type="button" class="btn btn-success h-100" data-bs-toggle="modal" data-bs-target="#nuevoClienteModal">
+                            <i class="fas fa-plus"></i> Nuevo Cliente
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -52,10 +62,11 @@ $result = $conn->query($sql);
             $search_result = $stmt->get_result();
             
             if ($search_result->num_rows > 0) {
+                echo "<div class='search-result mt-3'>";
                 echo "<h5>Resultados de la búsqueda para: <strong>".htmlspecialchars($buscar_nombre)."</strong></h5>";
                 echo "<div class='table-responsive'>";
-                echo "<table class='table table-striped'>";
-                echo "<thead><tr><th>Nombre</th><th>Apellido</th><th>Celular</th><th>DNI</th><th>Dirección</th><th>Acciones</th></tr></thead>";
+                echo "<table class='table table-striped table-hover'>";
+                echo "<thead class='table-dark'><tr><th>Nombre</th><th>Apellido</th><th>Celular</th><th>DNI</th><th>Dirección</th><th>Acciones</th></tr></thead>";
                 echo "<tbody>";
                 while ($row = $search_result->fetch_assoc()) {
                     $nombre = htmlspecialchars($row['nombre']);
@@ -71,19 +82,20 @@ $result = $conn->query($sql);
                         <td>$dni</td>
                         <td>$direccion</td>
                         <td>
-                            <button class='btn btn-warning btn-sm' onclick='editarCliente({$row['id_cliente']})'>
+                            <button class='btn btn-sm btn-warning' onclick='editarCliente({$row['id_cliente']})'>
                                 <i class='fas fa-edit'></i> Editar
                             </button>
-                            <button class='btn btn-info btn-sm' onclick='verMascotas({$row['id_cliente']})'>
-                                <i class='fas fa-paw'></i> Ver Mascotas
+                            <button class='btn btn-sm btn-info' onclick='verMascotas({$row['id_cliente']})'>
+                                <i class='fas fa-paw'></i> Mascotas
                             </button>
                         </td>
                     </tr>";
                 }
                 echo "</tbody></table>";
                 echo "</div>";
+                echo "</div>";
             } else {
-                echo "<div class='alert alert-info'>No se encontraron resultados para '<strong>".htmlspecialchars($buscar_nombre)."</strong>'.</div>";
+                echo "<div class='alert alert-info mt-3'>No se encontraron resultados para '<strong>".htmlspecialchars($buscar_nombre)."</strong>'.</div>";
             }
             
             $stmt->close();
@@ -92,10 +104,10 @@ $result = $conn->query($sql);
     </div>
 
     <!-- Sección de Auditoría -->
-    <div class="mb-4">
-        <h4>Auditoría</h4>
+    <div class="audit-section mb-4">
+        <h4><i class="fas fa-clipboard-check me-2"></i>Auditoría</h4>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6 mb-3 mb-md-0">
                 <select class="form-select" id="auditoria_select">
                     <option value="">Seleccionar tipo de auditoría...</option>
                     <option value="clientes_general">Clientes - Reporte General</option>
@@ -104,7 +116,7 @@ $result = $conn->query($sql);
                 </select>
             </div>
             <div class="col-md-6">
-                <div class="btn-group" role="group">
+                <div class="btn-group w-100" role="group">
                     <button type="button" class="btn btn-outline-success" onclick="descargarExcel()">
                         <i class="fas fa-file-excel"></i> Descargar Excel
                     </button>
@@ -118,36 +130,46 @@ $result = $conn->query($sql);
 
     <!-- Lista de todos los clientes -->
     <?php if (!isset($_GET['buscar_nombre'])): ?>
-    <div class="mb-4">
-        <h4>Todos los Clientes</h4>
+    <div class="clients-list">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="fas fa-list me-2"></i>Todos los Clientes</h4>
+            <span class="badge bg-primary">Total: <?php echo $result->num_rows; ?></span>
+        </div>
+        
         <?php if ($result->num_rows > 0): ?>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Apellido</th>
-                        <th>Celular</th>
-                        <th>DNI</th>
-                        <th>Dirección</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($row = $result->fetch_assoc()): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($row['nombre']); ?></td>
-                        <td><?php echo htmlspecialchars($row['apellido']); ?></td>
-                        <td><?php echo htmlspecialchars($row['celular']); ?></td>
-                        <td><?php echo htmlspecialchars($row['dni']); ?></td>
-                        <td><?php echo htmlspecialchars($row['direccion']); ?></td>
-                        <td>
-                            <a href='editar_cliente.php?id=<?php echo $row['id_cliente']; ?>' class='btn btn-warning btn-sm'>Editar</a>
-                            <a href='ver_mascotas.php?id=<?php echo $row['id_cliente']; ?>' class='btn btn-info btn-sm'>Ver Mascotas</a>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Apellido</th>
+                            <th>Celular</th>
+                            <th>DNI</th>
+                            <th>Dirección</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($row = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($row['nombre']); ?></td>
+                            <td><?php echo htmlspecialchars($row['apellido']); ?></td>
+                            <td><?php echo htmlspecialchars($row['celular']); ?></td>
+                            <td><?php echo htmlspecialchars($row['dni']); ?></td>
+                            <td><?php echo htmlspecialchars($row['direccion']); ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editarCliente(<?php echo $row['id_cliente']; ?>)">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="verMascotas(<?php echo $row['id_cliente']; ?>)">
+                                    <i class="fas fa-paw"></i> Mascotas
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php else: ?>
             <div class="alert alert-info">No hay clientes registrados.</div>
         <?php endif; ?>
@@ -156,45 +178,57 @@ $result = $conn->query($sql);
 
     <!-- Modal para Crear Nuevo Cliente -->
     <div class="modal fade" id="nuevoClienteModal" tabindex="-1" aria-labelledby="nuevoClienteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="nuevoClienteModalLabel">Crear Nuevo Cliente</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="nuevoClienteModalLabel">
+                        <i class="fas fa-user-plus me-2"></i>Nuevo Cliente
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form action="modules/clientes.php" method="POST" id="formNuevoCliente">
-                        <div class="mb-3">
-                            <label for="nombre" class="form-label">Nombre <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nombre" class="form-label">Nombre <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="nombre" name="nombre" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="apellido" class="form-label">Apellido <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="apellido" name="apellido" required>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="apellido" class="form-label">Apellido <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="apellido" name="apellido" required>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="celular" class="form-label">Celular <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="celular" name="celular" 
+                                       pattern="[0-9]{9}" maxlength="9" 
+                                       placeholder="9 dígitos (ej: 987654321)" required>
+                                <div class="form-text">Ingresa exactamente 9 números</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="dni" class="form-label">DNI</label>
+                                <input type="text" class="form-control" id="dni" name="dni" 
+                                       pattern="[0-9]{8}" maxlength="8" 
+                                       placeholder="8 dígitos (ej: 12345678) - Opcional">
+                                <div class="form-text">Opcional - 8 números exactos</div>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="celular" class="form-label">Celular <span class="text-danger">*</span></label>
-                            <input type="tel" class="form-control" id="celular" name="celular" 
-                                   pattern="[0-9]{9}" maxlength="9" 
-                                   placeholder="9 dígitos (ej: 987654321)" required>
-                            <div class="form-text">Ingresa exactamente 9 números</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="dni" class="form-label">DNI</label>
-                            <input type="text" class="form-control" id="dni" name="dni" 
-                                   pattern="[0-9]{8}" maxlength="8" 
-                                   placeholder="8 dígitos (ej: 12345678) - Opcional">
-                            <div class="form-text">Opcional - Si ingresas, debe tener exactamente 8 números</div>
-                        </div>
+                        
                         <div class="mb-3">
                             <label for="direccion" class="form-label">Dirección</label>
-                            <input type="text" class="form-control" id="direccion" name="direccion" placeholder="Opcional">
+                            <textarea class="form-control" id="direccion" name="direccion" rows="2" placeholder="Opcional"></textarea>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" form="formNuevoCliente" class="btn btn-success">Guardar Cliente</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" form="formNuevoCliente" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i> Guardar Cliente
+                    </button>
                 </div>
             </div>
         </div>
