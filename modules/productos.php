@@ -6,7 +6,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nombre = trim($_POST['nombre']);
     $precio = trim($_POST['precio']);
     $stock = trim($_POST['stock']);
-    $descripcion = isset($_POST['descripcion']) ? trim($_POST['descripcion']) : '';
 
     // Validaciones
     $errores = [];
@@ -24,10 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (empty($errores)) {
-        $insert_sql = "INSERT INTO productos (nombre, precio, stock, descripcion) 
-                       VALUES (?, ?, ?, ?)";
+        $insert_sql = "INSERT INTO productos (nombre, precio, stock) 
+                       VALUES (?, ?, ?)";
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("sdis", $nombre, $precio, $stock, $descripcion);
+        $stmt->bind_param("sdi", $nombre, $precio, $stock);
         
         if ($stmt->execute()) {
             echo "<script>
@@ -52,19 +51,18 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
     
     // Usar prepared statement para seguridad
     $search_sql = "SELECT * FROM productos 
-                  WHERE nombre LIKE ? 
-                     OR descripcion LIKE ?
-                  ORDER BY nombre";
+                  WHERE nombre LIKE ?
+                  ORDER BY id_producto DESC";
     
     $stmt = $conn->prepare($search_sql);
     $searchTerm = "%$buscar_producto%";
-    $stmt->bind_param("ss", $searchTerm, $searchTerm);
+    $stmt->bind_param("s", $searchTerm);
     $stmt->execute();
     $result = $stmt->get_result();
     $stmt->close();
 } else {
     // Obtener todos los productos
-    $sql = "SELECT * FROM productos ORDER BY nombre";
+    $sql = "SELECT * FROM productos ORDER BY id_producto DESC";
     $result = $conn->query($sql);
 }
 ?>
@@ -72,9 +70,6 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
 <div class="container-fluid px-4 productos">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0"><i class="fas fa-boxes me-2"></i>Gestión de Productos</h2>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
-            <i class="fas fa-plus-circle me-1"></i> Nuevo Producto
-        </button>
     </div>
 
     <!-- Tarjeta de Resumen -->
@@ -170,19 +165,26 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
             </div>
         </div>
         <div class="card-body">
-            <form method="GET" id="formBuscarProducto">
-                <div class="input-group">
-                    <input type="text" class="form-control" id="buscar_producto" name="buscar_producto" 
-                           placeholder="Buscar por nombre, descripción..." 
-                           value="<?php echo isset($_GET['buscar_producto']) ? htmlspecialchars($_GET['buscar_producto']) : ''; ?>">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                    <?php if (isset($_GET['buscar_producto'])): ?>
-                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaProducto()">
-                            <i class="fas fa-times"></i> Limpiar
+            <form method="GET" id="formBuscarProducto" class="row g-3 align-items-center">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="buscar_producto" name="buscar_producto" 
+                               placeholder="Buscar por nombre..." 
+                               value="<?php echo isset($_GET['buscar_producto']) ? htmlspecialchars($_GET['buscar_producto']) : ''; ?>">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i> Buscar
                         </button>
-                    <?php endif; ?>
+                        <?php if (isset($_GET['buscar_producto'])): ?>
+                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaProducto()">
+                            <i class="fas fa-times me-1"></i> Limpiar
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex align-items-stretch">
+                    <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
+                        <i class="fas fa-plus-circle me-1"></i> Nuevo Producto
+                    </button>
                 </div>
             </form>
         </div>
@@ -207,34 +209,31 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th width="100">ID</th>
-                                <th>Producto</th>
-                                <th width="120">Precio</th>
-                                <th width="150">Stock</th>
-                                <th width="150">Estado</th>
-                                <th width="150" class="text-end">Acciones</th>
+                                <th width="35%">Producto</th>
+                                <th width="15%" class="text-center">Precio</th>
+                                <th width="20%" class="text-center">Stock</th>
+                                <th width="15%" class="text-center">Estado</th>
+                                <th width="15%" class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
-                                <td>PROD-<?php echo str_pad($row['id_producto'], 4, '0', STR_PAD_LEFT); ?></td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <div class="bg-light rounded p-2 text-center" style="width: 40px; height: 40px;">
-                                                <i class="fas fa-box text-muted"></i>
+                                        <div class="flex-shrink-0 me-2">
+                                            <div class="bg-light rounded p-1 text-center" style="width: 30px; height: 30px;">
+                                                <i class="fas fa-box text-muted" style="font-size: 12px;"></i>
                                             </div>
                                         </div>
                                         <div class="flex-grow-1">
                                             <h6 class="mb-0"><?php echo htmlspecialchars($row['nombre']); ?></h6>
-                                            <small class="text-muted"><?php echo htmlspecialchars($row['descripcion'] ?? 'Sin descripción'); ?></small>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="fw-bold">S/. <?php echo number_format($row['precio'], 2); ?></td>
-                                <td>
-                                    <div class="progress" style="height: 20px;">
+                                <td class="fw-bold text-center">S/. <?php echo number_format($row['precio'], 2); ?></td>
+                                <td class="text-center">
+                                    <div class="progress mx-auto" style="height: 20px; max-width: 150px;">
                                         <?php 
                                             $porcentaje = min(100, ($row['stock'] / 50) * 100); // Asumiendo 50 como stock máximo para la barra
                                             $clase = $row['stock'] > 10 ? 'bg-success' : ($row['stock'] > 0 ? 'bg-warning' : 'bg-danger');
@@ -245,7 +244,7 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <span class="badge <?php echo $clase; ?> rounded-pill">
                                         <?php 
                                             if ($row['stock'] > 10) echo 'Disponible';
@@ -254,7 +253,7 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                                         ?>
                                     </span>
                                 </td>
-                                <td class="text-end">
+                                <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <button class="btn btn-sm btn-outline-primary" onclick="editarProducto(<?php echo $row['id_producto']; ?>)">
                                             <i class="fas fa-edit"></i>
@@ -299,7 +298,7 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
             <div class="modal-body">
                 <form action="modules/productos.php" method="POST" id="formNuevoProducto">
                     <div class="row">
-                        <div class="col-md-8">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="nombre_producto" class="form-label">Nombre del producto <span class="text-danger">*</span></label>
                                 <div class="input-group">
@@ -308,19 +307,10 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="codigo_producto" class="form-label">Código (opcional)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-barcode"></i></span>
-                                    <input type="text" class="form-control" id="codigo_producto" name="codigo" placeholder="Código interno">
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="precio" class="form-label">Precio (S/.) <span class="text-danger">*</span></label>
                                 <div class="input-group">
@@ -329,7 +319,7 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="stock" class="form-label">Stock inicial <span class="text-danger">*</span></label>
                                 <div class="input-group">
@@ -337,35 +327,6 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                                     <input type="number" class="form-control" id="stock" name="stock" min="0" placeholder="0" required>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="categoria" class="form-label">Categoría</label>
-                                <select class="form-select" id="categoria" name="categoria">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="electronica">Electrónica</option>
-                                    <option value="ropa">Ropa</option>
-                                    <option value="alimentos">Alimentos</option>
-                                    <option value="hogar">Hogar</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="descripcion" class="form-label">Descripción</label>
-                        <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Detalles adicionales del producto..."></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Imagen del producto</label>
-                        <div class="border rounded p-3 text-center">
-                            <i class="fas fa-image fa-3x text-muted mb-2"></i>
-                            <p class="text-muted small">Arrastra una imagen aquí o haz clic para seleccionar</p>
-                            <input type="file" class="d-none" id="imagenProducto" accept="image/*">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('imagenProducto').click()">
-                                <i class="fas fa-upload me-1"></i> Subir imagen
-                            </button>
                         </div>
                     </div>
                 </form>

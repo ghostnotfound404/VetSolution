@@ -67,15 +67,15 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
         <h2 class="mb-0"><i class="fas fa-concierge-bell me-2"></i>Gestión de Servicios</h2>
     </div>
 
-    <!-- Tarjeta de Búsqueda -->
+    <!-- Tarjeta de Búsqueda - Versión corregida -->
     <div class="card mb-4">
         <div class="card-header bg-white">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-search me-2"></i>Buscar Servicios</h5>
             </div>
         </div>
-        <div class="card-body">
-            <form method="GET" id="formBuscarServicio" class="row g-3">
+        <div class="card-body p-3">
+            <form method="GET" id="formBuscarServicio" class="row g-2 align-items-center">
                 <div class="col-md-8">
                     <div class="input-group">
                         <input type="text" class="form-control" id="buscar_servicio" name="buscar_servicio" 
@@ -85,18 +85,16 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                             <i class="fas fa-search me-1"></i> Buscar
                         </button>
                         <?php if (isset($_GET['buscar_servicio'])): ?>
-                            <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaServicio()">
-                                <i class="fas fa-times me-1"></i> Limpiar
-                            </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaServicio()">
+                            <i class="fas fa-times me-1"></i> Limpiar
+                        </button>
                         <?php endif; ?>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="d-grid">
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
-                            <i class="fas fa-plus-circle me-1"></i> Nuevo Servicio
-                        </button>
-                    </div>
+                <div class="col-md-4 d-flex align-items-stretch">
+                    <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
+                        <i class="fas fa-plus-circle me-1"></i> Nuevo Servicio
+                    </button>
                 </div>
             </form>
         </div>

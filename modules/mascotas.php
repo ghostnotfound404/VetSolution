@@ -5,7 +5,7 @@ include('../includes/config.php');
 $sql = "SELECT m.*, c.nombre as nombre_cliente, c.apellido as apellido_cliente 
         FROM mascotas m 
         INNER JOIN clientes c ON m.id_cliente = c.id_cliente 
-        ORDER BY m.nombre";
+        ORDER BY m.id_mascota DESC";
 $result = $conn->query($sql);
 
 // Obtener estadísticas
@@ -22,9 +22,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
     <!-- Encabezado con estadísticas -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0"><i class="fas fa-paw me-2"></i>Gestión de Mascotas</h2>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevaMascotaModal">
-            <i class="fas fa-plus-circle me-1"></i> Nueva Mascota
-        </button>
     </div>
 
     <!-- Tarjetas de Resumen -->
@@ -35,7 +32,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Total Mascotas</h6>
-                            <h4 class="mb-0"><?php echo $stats['total_mascotas']; ?></h4>
+                            <h4 class="mb-0" style="color: #fff;"><?php echo $stats['total_mascotas']; ?></h4>
                         </div>
                         <i class="fas fa-paw fa-2x"></i>
                     </div>
@@ -48,7 +45,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Caninos</h6>
-                            <h4 class="mb-0"><?php echo $stats['caninos']; ?></h4>
+                            <h4 class="mb-0" style="color: #fff;"><?php echo $stats['caninos']; ?></h4>
                         </div>
                         <i class="fas fa-dog fa-2x"></i>
                     </div>
@@ -61,7 +58,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Felinos</h6>
-                            <h4 class="mb-0"><?php echo $stats['felinos']; ?></h4>
+                            <h4 class="mb-0" style="color: #fff;"><?php echo $stats['felinos']; ?></h4>
                         </div>
                         <i class="fas fa-cat fa-2x"></i>
                     </div>
@@ -74,7 +71,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Esterilizados</h6>
-                            <h4 class="mb-0"><?php echo $stats['esterilizados']; ?></h4>
+                            <h4 class="mb-0" style="color: #fff;"><?php echo $stats['esterilizados']; ?></h4>
                         </div>
                         <i class="fas fa-clinic-medical fa-2x"></i>
                     </div>
@@ -90,7 +87,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                 <h5 class="mb-0"><i class="fas fa-search me-2"></i>Buscar Mascotas</h5>
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownFiltros" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-filter me-1"></i> Filtros
+                        <i class="fas fa-sliders-h"></i> Filtros
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="dropdownFiltros">
                         <li><a class="dropdown-item" href="#" onclick="filtrarMascotas('todos')">Todas las mascotas</a></li>
@@ -143,7 +140,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                          OR c.nombre LIKE ? 
                          OR c.apellido LIKE ?
                          OR CONCAT(c.nombre, ' ', c.apellido) LIKE ?
-                      ORDER BY m.nombre";
+                      ORDER BY m.id_mascota DESC";
         
         $stmt = $conn->prepare($search_sql);
         $searchTerm = "%$buscar_mascota%";
@@ -166,7 +163,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th width="100">HC</th>
                                     <th>Mascota</th>
                                     <th>Especie/Raza</th>
                                     <th>Propietario</th>
@@ -178,7 +174,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                             <tbody>
                                 <?php while ($row = $search_result->fetch_assoc()): ?>
                                 <tr>
-                                    <td>HC-<?php echo str_pad($row['id_mascota'], 4, '0', STR_PAD_LEFT); ?></td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="flex-shrink-0 me-3">
@@ -193,7 +188,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-info"><?php echo htmlspecialchars($row['especie']); ?></span>
+                                        <span class="badge bg-<?php echo $row['especie'] == 'Canino' ? 'success' : 'info'; ?>"><?php echo htmlspecialchars($row['especie']); ?></span>
                                         <div class="small text-muted"><?php echo htmlspecialchars($row['raza']); ?></div>
                                     </td>
                                     <td><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></td>
@@ -226,6 +221,10 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                             <button class="btn btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
                                                     data-bs-toggle="tooltip" title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
+                                                    data-bs-toggle="tooltip" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -266,7 +265,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th width="100">HC</th>
                                 <th>Mascota</th>
                                 <th>Especie/Raza</th>
                                 <th>Propietario</th>
@@ -278,7 +276,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                         <tbody>
                             <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
-                                <td>HC-<?php echo str_pad($row['id_mascota'], 4, '0', STR_PAD_LEFT); ?></td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="flex-shrink-0 me-3">
@@ -293,7 +290,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-info"><?php echo htmlspecialchars($row['especie']); ?></span>
+                                    <span class="badge bg-<?php echo $row['especie'] == 'Canino' ? 'success' : 'info'; ?>"><?php echo htmlspecialchars($row['especie']); ?></span>
                                     <div class="small text-muted"><?php echo htmlspecialchars($row['raza']); ?></div>
                                 </td>
                                 <td><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></td>
@@ -326,6 +323,10 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                         <button class="btn btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
                                                 data-bs-toggle="tooltip" title="Ver detalles">
                                             <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
+                                                data-bs-toggle="tooltip" title="Eliminar">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -439,32 +440,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="color" class="form-label">Color</label>
-                                    <input type="text" class="form-control" id="color" name="color">
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <div class="mb-3">
-                                    <label for="observaciones" class="form-label">Observaciones</label>
-                                    <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-12">
-                                <h6 class="border-bottom pb-2"><i class="fas fa-camera me-2"></i>Fotografía</h6>
-                                <div class="text-center border rounded p-4">
-                                    <i class="fas fa-image fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted small">Arrastra una imagen aquí o haz clic para seleccionar</p>
-                                    <input type="file" class="d-none" id="fotoMascota" accept="image/*">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('fotoMascota').click()">
-                                        <i class="fas fa-upload me-1"></i> Subir imagen
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </form>
                 </div>
@@ -508,6 +483,39 @@ function verDetalles(id) {
         success: function(response) {
             $('#contenidoModalDetalles').html(response);
             $('#detallesMascotaModal').modal('show');
+        }
+    });
+}
+
+function eliminarMascota(id) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede deshacer",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'modules/eliminar_mascota.php',
+                method: 'POST',
+                data: { id: id },
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire('Eliminado', 'La mascota ha sido eliminada correctamente', 'success');
+                        // Recargar la página
+                        location.reload();
+                    } else {
+                        Swal.fire('Error', response.message || 'Error al eliminar la mascota', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Error al eliminar la mascota', 'error');
+                }
+            });
         }
     });
 }
