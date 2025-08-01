@@ -45,24 +45,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Obtener productos (con búsqueda si se especifica)
+// Obtener productos (con búsqueda y/o filtro si se especifican)
+$where_clauses = [];
+$params = [];
+$types = "";
+
+// Procesar búsqueda por nombre
 if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
     $buscar_producto = trim($_GET['buscar_producto']);
-    
-    // Usar prepared statement para seguridad
-    $search_sql = "SELECT * FROM productos 
-                  WHERE nombre LIKE ?
-                  ORDER BY id_producto DESC";
-    
-    $stmt = $conn->prepare($search_sql);
-    $searchTerm = "%$buscar_producto%";
-    $stmt->bind_param("s", $searchTerm);
+    $where_clauses[] = "nombre LIKE ?";
+    $params[] = "%$buscar_producto%";
+    $types .= "s";
+}
+
+// Procesar filtros de stock
+if (isset($_GET['filtro'])) {
+    switch ($_GET['filtro']) {
+        case 'stock_alto':
+            $where_clauses[] = "stock > 10";
+            break;
+        case 'stock_bajo':
+            $where_clauses[] = "stock > 0 AND stock <= 10";
+            break;
+        case 'sin_stock':
+            $where_clauses[] = "stock = 0";
+            break;
+        // El filtro 'todos' no agrega restricciones
+    }
+}
+
+// Construir la consulta SQL con las condiciones aplicadas
+$sql = "SELECT * FROM productos";
+if (!empty($where_clauses)) {
+    $sql .= " WHERE " . implode(" AND ", $where_clauses);
+}
+$sql .= " ORDER BY id_producto DESC";
+
+// Ejecutar la consulta
+if (!empty($params)) {
+    $stmt = $conn->prepare($sql);
+    // Enlazar parámetros si hay
+    if (!empty($types)) {
+        // Corregir la forma de enlazar parámetros
+        $stmt->bind_param($types, ...$params);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     $stmt->close();
 } else {
-    // Obtener todos los productos
-    $sql = "SELECT * FROM productos ORDER BY id_producto DESC";
     $result = $conn->query($sql);
 }
 ?>
@@ -153,19 +183,39 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                 <h5 class="mb-0"><i class="fas fa-search me-2"></i>Buscar Productos</h5>
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-sliders-h"></i> Filtros
+                        <i class="fas fa-sliders-h"></i> 
+                        <?php
+                        $filtro_actual = isset($_GET['filtro']) ? $_GET['filtro'] : 'todos';
+                        switch ($filtro_actual) {
+                            case 'stock_alto':
+                                echo 'Stock alto (>10)';
+                                break;
+                            case 'stock_bajo':
+                                echo 'Stock bajo (1-10)';
+                                break;
+                            case 'sin_stock':
+                                echo 'Sin stock';
+                                break;
+                            default:
+                                echo 'Todos los productos';
+                        }
+                        ?>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <li><a class="dropdown-item" href="#" onclick="filtrarProductos('todos')">Todos los productos</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="filtrarProductos('stock_alto')">Stock alto (>10)</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="filtrarProductos('stock_bajo')">Stock bajo (1-10)</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="filtrarProductos('sin_stock')">Sin stock</a></li>
+                        <li><a class="dropdown-item <?php echo ($filtro_actual == 'todos' || !isset($_GET['filtro'])) ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('todos')">Todos los productos</a></li>
+                        <li><a class="dropdown-item <?php echo $filtro_actual == 'stock_alto' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('stock_alto')">Stock alto (>10)</a></li>
+                        <li><a class="dropdown-item <?php echo $filtro_actual == 'stock_bajo' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('stock_bajo')">Stock bajo (1-10)</a></li>
+                        <li><a class="dropdown-item <?php echo $filtro_actual == 'sin_stock' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('sin_stock')">Sin stock</a></li>
                     </ul>
                 </div>
             </div>
         </div>
         <div class="card-body">
             <form method="GET" id="formBuscarProducto" class="row g-3 align-items-center">
+                <!-- Mantener el filtro actual cuando se realiza una búsqueda -->
+                <?php if (isset($_GET['filtro'])): ?>
+                <input type="hidden" name="filtro" value="<?php echo htmlspecialchars($_GET['filtro']); ?>">
+                <?php endif; ?>
                 <div class="col-md-8">
                     <div class="input-group">
                         <input type="text" class="form-control" id="buscar_producto" name="buscar_producto" 
@@ -195,11 +245,8 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>Lista de Productos</h5>
             <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel()">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('productos')">
                     <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="descargarPDF()">
-                    <i class="fas fa-file-pdf me-1"></i> PDF
                 </button>
             </div>
         </div>
@@ -209,10 +256,10 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th width="35%">Producto</th>
+                                <th width="25%">Producto</th>
                                 <th width="15%" class="text-center">Precio</th>
-                                <th width="20%" class="text-center">Stock</th>
-                                <th width="15%" class="text-center">Estado</th>
+                                <th width="25%" class="text-center">Stock</th>
+                                <th width="20%" class="text-center">Estado</th>
                                 <th width="15%" class="text-center">Acciones</th>
                             </tr>
                         </thead>
@@ -344,21 +391,6 @@ if (isset($_GET['buscar_producto']) && !empty(trim($_GET['buscar_producto']))) {
 </div>
 
 <script>
-function editarProducto(id) {
-    // Implementar lógica de edición con AJAX
-    $.ajax({
-        url: 'modules/editar_producto.php?id=' + id,
-        method: 'GET',
-        success: function(response) {
-            $('#contenidoModalEditar').html(response);
-            $('#editarProductoModal').modal('show');
-        },
-        error: function() {
-            alert('Error al cargar los datos del producto');
-        }
-    });
-}
-
 function eliminarProducto(id, nombre) {
     Swal.fire({
         title: '¿Eliminar producto?',
@@ -375,6 +407,7 @@ function eliminarProducto(id, nombre) {
                 url: 'modules/eliminar_producto.php',
                 method: 'POST',
                 data: { id: id },
+                dataType: 'json',
                 success: function(response) {
                     if (response.success) {
                         Swal.fire(
@@ -404,75 +437,82 @@ function eliminarProducto(id, nombre) {
     });
 }
 
-function filtrarProductos(tipo) {
-    // Implementar filtrado de productos
-    let url = 'modules/productos.php?filtro=' + tipo;
+function editarProducto(id) {
+    $.ajax({
+        url: 'modules/editar_producto.php',
+        method: 'GET',
+        data: { id: id },
+        success: function(response) {
+            $('#contenidoModalEditar').html(response);
+            $('#editarProductoModal').modal('show');
+        },
+        error: function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo cargar el formulario de edición',
+                confirmButtonColor: '#dc3545'
+            });
+        }
+    });
+}
+
+function descargarExcel(tabla) {
+    window.open('modules/exportar_excel.php?tabla=' + tabla, '_blank');
+}
+
+// Función para filtrar productos por stock
+function filtrarProductos(filtro) {
+    // Obtener el parámetro de búsqueda actual (si existe)
+    let urlParams = new URLSearchParams(window.location.search);
+    let busqueda = urlParams.get('buscar_producto') || '';
     
-    if (tipo === 'todos') {
-        url = 'modules/productos.php';
+    // Crear la URL base para la redirección
+    let url = '?filtro=' + filtro;
+    
+    // Añadir el parámetro de búsqueda si existe
+    if (busqueda) {
+        url += '&buscar_producto=' + encodeURIComponent(busqueda);
     }
     
-    $.ajax({
-        url: url,
-        method: 'GET',
-        success: function(response) {
-            $('#contenido').html(response);
-        },
-        error: function() {
-            console.error('Error al filtrar productos');
-        }
-    });
-}
-
-function realizarBusquedaProducto() {
-    const formData = new FormData(document.getElementById('formBuscarProducto'));
-    const searchParams = new URLSearchParams(formData);
+    console.log("Aplicando filtro: " + filtro + " - URL: " + url);
     
-    $.ajax({
-        url: 'modules/productos.php?' + searchParams.toString(),
-        method: 'GET',
-        success: function(response) {
-            $('#contenido').html(response);
-        },
-        error: function() {
-            console.error('Error al realizar la búsqueda');
-        }
-    });
+    // Redirigir a la URL con el filtro
+    window.location.href = url + '#/productos';
 }
 
+// Función para limpiar la búsqueda
 function limpiarBusquedaProducto() {
-    $.ajax({
-        url: 'modules/productos.php',
-        method: 'GET',
-        success: function(response) {
-            $('#contenido').html(response);
-        },
-        error: function() {
-            console.error('Error al limpiar la búsqueda');
+    // Mantener el filtro actual si existe
+    let urlParams = new URLSearchParams(window.location.search);
+    let filtro = urlParams.get('filtro') || '';
+    
+    if (filtro) {
+        window.location.href = '?filtro=' + filtro + '#/productos';
+    } else {
+        window.location.href = '?#/productos';
+    }
+}
+
+// Función para realizar la búsqueda manteniendo el filtro
+function realizarBusquedaProducto() {
+    let busqueda = $('#buscar_producto').val();
+    let urlParams = new URLSearchParams(window.location.search);
+    let filtro = urlParams.get('filtro') || '';
+    
+    let url = '?';
+    
+    if (busqueda) {
+        url += 'buscar_producto=' + encodeURIComponent(busqueda);
+        
+        if (filtro) {
+            url += '&filtro=' + filtro;
         }
-    });
-}
-
-function descargarExcel() {
-    const buscar = document.getElementById('buscar_producto').value;
-    let url = 'exportar_excel.php?tipo=productos';
-    
-    if (buscar) {
-        url += '&buscar=' + encodeURIComponent(buscar);
+    } else if (filtro) {
+        url += 'filtro=' + filtro;
     }
     
-    window.open(url, '_blank');
-}
-
-function descargarPDF() {
-    const buscar = document.getElementById('buscar_producto').value;
-    let url = 'exportar_pdf.php?tipo=productos';
-    
-    if (buscar) {
-        url += '&buscar=' + encodeURIComponent(buscar);
-    }
-    
-    window.open(url, '_blank');
+    window.location.href = url + '#/productos';
 }
 
 $(document).ready(function() {
@@ -484,6 +524,9 @@ $(document).ready(function() {
         e.preventDefault();
         realizarBusquedaProducto();
     });
+    
+    // Debug: Log current URL parameters
+    console.log("Parámetros actuales:", new URLSearchParams(window.location.search).toString());
     
     // Validación del formulario de nuevo producto
     $('#formNuevoProducto').validate({
@@ -533,3 +576,12 @@ $(document).ready(function() {
     });
 });
 </script>
+
+<!-- Modal para Editar Producto -->
+<div class="modal fade" id="editarProductoModal" tabindex="-1" aria-labelledby="editarProductoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" id="contenidoModalEditar">
+            <!-- El contenido será cargado dinámicamente mediante AJAX -->
+        </div>
+    </div>
+</div>

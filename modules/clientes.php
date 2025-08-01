@@ -1,9 +1,95 @@
 <?php
 include('../includes/config.php');
 
-// Obtener todos los clientes
-$sql = "SELECT * FROM clientes";
-$result = $conn->query($sql);
+// Procesar formulario de nuevo cliente
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $nombre = trim($_POST['nombre']);
+    $apellido = trim($_POST['apellido']);
+    $celular = trim($_POST['celular']);
+    $dni = isset($_POST['dni']) ? trim($_POST['dni']) : '';
+    $direccion = isset($_POST['direccion']) ? trim($_POST['direccion']) : '';
+
+    // Validaciones
+    $errores = [];
+    
+    if (empty($nombre)) {
+        $errores[] = "El nombre del cliente es obligatorio";
+    }
+    
+    if (empty($apellido)) {
+        $errores[] = "El apellido del cliente es obligatorio";
+    }
+    
+    if (empty($celular)) {
+        $errores[] = "El celular del cliente es obligatorio";
+    } elseif (!preg_match('/^[0-9]{9}$/', $celular)) {
+        $errores[] = "El celular debe tener exactamente 9 dígitos";
+    }
+    
+    if (!empty($dni) && !preg_match('/^[0-9]{8}$/', $dni)) {
+        $errores[] = "El DNI debe tener exactamente 8 dígitos";
+    }
+    
+    // Verificar si el DNI ya existe (si se proporcionó)
+    if (!empty($dni)) {
+        $check_dni_sql = "SELECT id_cliente FROM clientes WHERE dni = ?";
+        $stmt_check = $conn->prepare($check_dni_sql);
+        $stmt_check->bind_param("s", $dni);
+        $stmt_check->execute();
+        $result_check = $stmt_check->get_result();
+        if ($result_check->num_rows > 0) {
+            $errores[] = "Ya existe un cliente registrado con este DNI";
+        }
+        $stmt_check->close();
+    }
+
+    if (empty($errores)) {
+        $insert_sql = "INSERT INTO clientes (nombre, apellido, celular, dni, direccion) VALUES (?, ?, ?, ?, ?)";
+        $stmt = $conn->prepare($insert_sql);
+        $stmt->bind_param("sssss", $nombre, $apellido, $celular, $dni, $direccion);
+        
+        if ($stmt->execute()) {
+            // Respuesta JSON para éxito
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => 'Cliente registrado correctamente']);
+            exit();
+        } else {
+            // Respuesta JSON para error
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error al guardar cliente: ' . $conn->error]);
+            exit();
+        }
+        $stmt->close();
+    } else {
+        // Respuesta JSON para errores de validación
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => implode('\n', $errores)]);
+        exit();
+    }
+}
+
+// Obtener clientes (con búsqueda si se especifica)
+if (isset($_GET['buscar_nombre']) && !empty(trim($_GET['buscar_nombre']))) {
+    $buscar_nombre = trim($_GET['buscar_nombre']);
+    
+    $search_sql = "SELECT * FROM clientes 
+                  WHERE nombre LIKE ? 
+                     OR apellido LIKE ? 
+                     OR dni LIKE ?
+                     OR CONCAT(nombre, ' ', apellido) LIKE ?
+                  ORDER BY fecha_registro DESC";
+    
+    $stmt = $conn->prepare($search_sql);
+    $searchTerm = "%$buscar_nombre%";
+    $stmt->bind_param("ssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+} else {
+    // Obtener todos los clientes ordenados por fecha de registro (más recientes primero)
+    $sql = "SELECT * FROM clientes ORDER BY fecha_registro DESC";
+    $result = $conn->query($sql);
+}
 
 // Obtener estadísticas
 $stats_sql = "SELECT COUNT(*) as total_clientes FROM clientes";
@@ -70,33 +156,16 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
 
     <!-- Resultados de Búsqueda -->
     <?php if (isset($_GET['buscar_nombre']) && !empty(trim($_GET['buscar_nombre']))): ?>
-        <?php
-        $buscar_nombre = trim($_GET['buscar_nombre']);
-        
-        $search_sql = "SELECT * FROM clientes 
-                      WHERE nombre LIKE ? 
-                         OR apellido LIKE ? 
-                         OR dni LIKE ?
-                         OR CONCAT(nombre, ' ', apellido) LIKE ?
-                      ORDER BY nombre, apellido";
-        
-        $stmt = $conn->prepare($search_sql);
-        $searchTerm = "%$buscar_nombre%";
-        $stmt->bind_param("ssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm);
-        $stmt->execute();
-        $search_result = $stmt->get_result();
-        ?>
-        
         <div class="card mb-4">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fas fa-search-result me-2"></i>
-                    Resultados para: "<?php echo htmlspecialchars($buscar_nombre); ?>"
+                    Resultados para: "<?php echo htmlspecialchars($_GET['buscar_nombre']); ?>"
                 </h5>
-                <span class="badge bg-primary"><?php echo $search_result->num_rows; ?> encontrados</span>
+                <span class="badge bg-primary"><?php echo $result->num_rows; ?> encontrados</span>
             </div>
             <div class="card-body">
-                <?php if ($search_result->num_rows > 0): ?>
+                <?php if ($result->num_rows > 0): ?>
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
@@ -105,11 +174,11 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                     <th>Contacto</th>
                                     <th>DNI</th>
                                     <th>Dirección</th>
-                                    <th width="150" class="text-center">Acciones</th>
+                                    <th width="180" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php while ($row = $search_result->fetch_assoc()): ?>
+                                <?php while ($row = $result->fetch_assoc()): ?>
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -143,6 +212,10 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                                     data-bs-toggle="tooltip" title="Ver Mascotas">
                                                 <i class="fas fa-paw"></i>
                                             </button>
+                                            <button class="btn btn-outline-danger" onclick="eliminarCliente(<?php echo $row['id_cliente']; ?>)" 
+                                                    data-bs-toggle="tooltip" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -159,7 +232,6 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                 <?php endif; ?>
             </div>
         </div>
-        <?php $stmt->close(); ?>
     <?php endif; ?>
 
     <!-- Lista Completa de Clientes (cuando no hay búsqueda) -->
@@ -168,11 +240,8 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>Todos los Clientes</h5>
             <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel()">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('clientes')">
                     <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="descargarPDF()">
-                    <i class="fas fa-file-pdf me-1"></i> PDF
                 </button>
             </div>
         </div>
@@ -186,7 +255,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                 <th>Contacto</th>
                                 <th>DNI</th>
                                 <th>Dirección</th>
-                                <th width="150" class="text-center">Acciones</th>
+                                <th width="180" class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,6 +293,10 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                                 data-bs-toggle="tooltip" title="Ver Mascotas">
                                             <i class="fas fa-paw"></i>
                                         </button>
+                                        <button class="btn btn-outline-danger" onclick="eliminarCliente(<?php echo $row['id_cliente']; ?>)" 
+                                                data-bs-toggle="tooltip" title="Eliminar">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -256,7 +329,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="modules/clientes.php" method="POST" id="formNuevoCliente">
+                    <form id="formNuevoCliente">
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="nombre" class="form-label">Nombre <span class="text-danger">*</span></label>
@@ -319,6 +392,15 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
     </div>
 </div>
 
+<!-- Modal para Editar Cliente -->
+<div class="modal fade" id="editarClienteModal" tabindex="-1" aria-labelledby="editarClienteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="contenidoModalEditar">
+            <!-- El contenido se carga dinámicamente desde editar_cliente.php -->
+        </div>
+    </div>
+</div>
+
 <script>
 // Funciones para los botones de acción
 function editarCliente(id) {
@@ -368,22 +450,102 @@ function limpiarBusqueda() {
     });
 }
 
-function descargarExcel() {
-    const tipoAuditoria = document.getElementById('auditoria_select').value;
-    if (!tipoAuditoria) {
-        Swal.fire('Advertencia', 'Por favor selecciona un tipo de auditoría', 'warning');
-        return;
-    }
-    window.open('exportar_excel.php?tipo=' + tipoAuditoria, '_blank');
+function descargarExcel(tabla) {
+    window.open('modules/exportar_excel.php?tabla=' + tabla, '_blank');
 }
 
-function descargarPDF() {
-    const tipoAuditoria = document.getElementById('auditoria_select').value;
-    if (!tipoAuditoria) {
-        Swal.fire('Advertencia', 'Por favor selecciona un tipo de auditoría', 'warning');
+function eliminarCliente(id) {
+    console.log('Función eliminarCliente llamada con ID:', id);
+    
+    // Verificar si SweetAlert2 está disponible
+    if (typeof Swal === 'undefined') {
+        alert('SweetAlert2 no está disponible');
         return;
     }
-    window.open('exportar_pdf.php?tipo=' + tipoAuditoria, '_blank');
+    
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede deshacer",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e53e3e',
+        cancelButtonColor: '#3182ce',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        console.log('Resultado del SweetAlert:', result);
+        if (result.isConfirmed) {
+            console.log('Usuario confirmó eliminación, enviando AJAX...');
+            
+            // Mostrar loading
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            $.ajax({
+                url: 'modules/eliminar_cliente.php',
+                method: 'POST',
+                data: { id: id },
+                dataType: 'json',
+                timeout: 10000, // 10 segundos timeout
+                beforeSend: function() {
+                    console.log('Enviando petición AJAX a:', 'modules/eliminar_cliente.php');
+                    console.log('Datos:', { id: id });
+                },
+                success: function(response) {
+                    console.log('Respuesta AJAX exitosa:', response);
+                    Swal.close(); // Cerrar loading
+                    
+                    if (response && response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: response.message || 'Cliente eliminado correctamente',
+                            confirmButtonColor: '#7c4dff',
+                            confirmButtonText: 'Aceptar'
+                        }).then(() => {
+                            // Recargar la lista
+                            location.reload(); // Recargar toda la página por ahora
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Error desconocido',
+                            confirmButtonColor: '#7c4dff',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error AJAX completo:', {
+                        xhr: xhr,
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText
+                    });
+                    
+                    Swal.close(); // Cerrar loading
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'Error: ' + error + ' - Status: ' + status,
+                        confirmButtonColor: '#7c4dff',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            });
+        } else {
+            console.log('Usuario canceló la eliminación');
+        }
+    });
 }
 
 // Eventos al cargar la página
@@ -395,6 +557,68 @@ $(document).ready(function() {
     $('#formBuscarCliente').on('submit', function(e) {
         e.preventDefault();
         realizarBusqueda();
+    });
+    
+    // Manejar envío del formulario de nuevo cliente
+    $('#formNuevoCliente').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Validar campos obligatorios
+        if (!$('#nombre').val().trim()) {
+            return;
+        }
+        
+        if (!$('#apellido').val().trim()) {
+            return;
+        }
+        
+        if (!$('#celular').val().trim()) {
+            return;
+        }
+        
+        // Enviar datos via AJAX
+        const formData = new FormData();
+        formData.append('nombre', $('#nombre').val().trim());
+        formData.append('apellido', $('#apellido').val().trim());
+        formData.append('celular', $('#celular').val().trim());
+        formData.append('dni', $('#dni').val().trim());
+        formData.append('direccion', $('#direccion').val().trim());
+        
+        $.ajax({
+            url: 'modules/clientes.php',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Cerrar modal
+                    $('#nuevoClienteModal').modal('hide');
+                    
+                    // Limpiar formulario
+                    $('#formNuevoCliente')[0].reset();
+                    
+                    // Recargar solo el contenido de clientes
+                    $.ajax({
+                        url: 'modules/clientes.php',
+                        method: 'GET',
+                        success: function(data) {
+                            $('#contenido').html(data);
+                        },
+                        error: function() {
+                            // Si falla, recargar toda la página
+                            window.location.reload();
+                        }
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                // Solo cerrar el modal y limpiar, sin mostrar mensaje de error
+                $('#nuevoClienteModal').modal('hide');
+                $('#formNuevoCliente')[0].reset();
+            }
+        });
     });
     
     // Validación del formulario de nuevo cliente

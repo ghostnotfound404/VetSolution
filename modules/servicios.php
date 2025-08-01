@@ -5,7 +5,6 @@ include('../includes/config.php');
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nombre = trim($_POST['nombre']);
     $precio = trim($_POST['precio']);
-    $descripcion = isset($_POST['descripcion']) ? trim($_POST['descripcion']) : '';
 
     // Validaciones
     $errores = [];
@@ -19,9 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (empty($errores)) {
-        $insert_sql = "INSERT INTO servicios (nombre, precio, descripcion) VALUES (?, ?, ?)";
+        $insert_sql = "INSERT INTO servicios (nombre, precio) VALUES (?, ?)";
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("sds", $nombre, $precio, $descripcion);
+        $stmt->bind_param("sd", $nombre, $precio);
         
         if ($stmt->execute()) {
             echo "<script>
@@ -45,18 +44,17 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
     $buscar_servicio = trim($_GET['buscar_servicio']);
     
     $search_sql = "SELECT * FROM servicios 
-                  WHERE nombre LIKE ? 
-                     OR descripcion LIKE ?
-                  ORDER BY nombre";
+                  WHERE nombre LIKE ?
+                  ORDER BY id_servicio DESC";
     
     $stmt = $conn->prepare($search_sql);
     $searchTerm = "%$buscar_servicio%";
-    $stmt->bind_param("ss", $searchTerm, $searchTerm);
+    $stmt->bind_param("s", $searchTerm);
     $stmt->execute();
     $result = $stmt->get_result();
     $stmt->close();
 } else {
-    $sql = "SELECT * FROM servicios ORDER BY nombre";
+    $sql = "SELECT * FROM servicios ORDER BY id_servicio DESC";
     $result = $conn->query($sql);
 }
 ?>
@@ -79,7 +77,7 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                 <div class="col-md-8">
                     <div class="input-group">
                         <input type="text" class="form-control" id="buscar_servicio" name="buscar_servicio" 
-                               placeholder="Buscar por nombre, descripción..." 
+                               placeholder="Buscar por nombre..." 
                                value="<?php echo isset($_GET['buscar_servicio']) ? htmlspecialchars($_GET['buscar_servicio']) : ''; ?>">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-search me-1"></i> Buscar
@@ -106,13 +104,12 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
         $buscar_servicio = trim($_GET['buscar_servicio']);
         
         $search_sql = "SELECT * FROM servicios 
-                      WHERE nombre LIKE ? 
-                         OR descripcion LIKE ?
-                      ORDER BY nombre";
+                      WHERE nombre LIKE ?
+                      ORDER BY id_servicio DESC";
         
         $stmt = $conn->prepare($search_sql);
         $searchTerm = "%$buscar_servicio%";
-        $stmt->bind_param("ss", $searchTerm, $searchTerm);
+        $stmt->bind_param("s", $searchTerm);
         $stmt->execute();
         $search_result = $stmt->get_result();
         ?>
@@ -131,21 +128,18 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th width="100">ID</th>
-                                    <th>Servicio</th>
-                                    <th width="150">Precio</th>
-                                    <th>Descripción</th>
-                                    <th width="120" class="text-center">Acciones</th>
+                                    <th width="50%" class="text-center">Servicio</th>
+                                    <th width="25%" class="text-center">Precio</th>
+                                    <th width="25%" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php while ($row = $search_result->fetch_assoc()): ?>
                                 <tr>
-                                    <td>SRV-<?php echo str_pad($row['id_servicio'], 4, '0', STR_PAD_LEFT); ?></td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
                                             <div class="flex-shrink-0 me-3">
-                                                <div class="bg-light rounded p-2 text-center" style="width: 40px; height: 40px;">
+                                                <div class="bg-light rounded-circle p-2 text-center" style="width: 40px; height: 40px;">
                                                     <i class="fas fa-concierge-bell text-primary"></i>
                                                 </div>
                                             </div>
@@ -154,8 +148,7 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="fw-bold">S/. <?php echo number_format($row['precio'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($row['descripcion'] ?? 'Sin descripción'); ?></td>
+                                    <td class="fw-bold text-center">S/. <?php echo number_format($row['precio'], 2); ?></td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button class="btn btn-outline-primary" onclick="editarServicio(<?php echo $row['id_servicio']; ?>)" 
@@ -191,11 +184,8 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>Todos los Servicios</h5>
             <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel()">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('servicios')">
                     <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="descargarPDF()">
-                    <i class="fas fa-file-pdf me-1"></i> PDF
                 </button>
             </div>
         </div>
@@ -205,21 +195,18 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th width="100">ID</th>
-                                <th>Servicio</th>
-                                <th width="150">Precio</th>
-                                <th>Descripción</th>
-                                <th width="120" class="text-center">Acciones</th>
+                                <th width="50%" class="text-center">Servicio</th>
+                                <th width="25%" class="text-center">Precio</th>
+                                <th width="25%" class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
-                                <td>SRV-<?php echo str_pad($row['id_servicio'], 4, '0', STR_PAD_LEFT); ?></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
+                                <td class="text-center">
+                                    <div class="d-flex align-items-center justify-content-center">
                                         <div class="flex-shrink-0 me-3">
-                                            <div class="bg-light rounded p-2 text-center" style="width: 40px; height: 40px;">
+                                            <div class="bg-light rounded-circle p-2 text-center" style="width: 40px; height: 40px;">
                                                 <i class="fas fa-concierge-bell text-primary"></i>
                                             </div>
                                         </div>
@@ -228,8 +215,7 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                                         </div>
                                     </div>
                                 </td>
-                                <td class="fw-bold">S/. <?php echo number_format($row['precio'], 2); ?></td>
-                                <td><?php echo htmlspecialchars($row['descripcion'] ?? 'Sin descripción'); ?></td>
+                                <td class="fw-bold text-center">S/. <?php echo number_format($row['precio'], 2); ?></td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm" role="group">
                                         <button class="btn btn-outline-primary" onclick="editarServicio(<?php echo $row['id_servicio']; ?>)" 
@@ -287,11 +273,6 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                                 <span class="input-group-text">S/.</span>
                                 <input type="number" class="form-control" id="precio_servicio" name="precio" step="0.01" min="0" required>
                             </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="descripcion_servicio" class="form-label">Descripción</label>
-                            <textarea class="form-control" id="descripcion_servicio" name="descripcion" rows="3" placeholder="Descripción detallada del servicio (opcional)"></textarea>
                         </div>
                     </form>
                 </div>
@@ -397,24 +378,9 @@ function limpiarBusquedaServicio() {
     });
 }
 
-function descargarExcel() {
-    const buscar = document.getElementById('buscar_servicio').value;
-    let url = 'exportar_excel.php?tipo=servicios';
-    
-    if (buscar) {
-        url += '&buscar=' + encodeURIComponent(buscar);
-    }
-    
-    window.open(url, '_blank');
+function descargarExcel(tabla) {
+    window.open('modules/exportar_excel.php?tabla=' + tabla, '_blank');
 }
-
-function descargarPDF() {
-    const buscar = document.getElementById('buscar_servicio').value;
-    let url = 'exportar_pdf.php?tipo=servicios';
-    
-    if (buscar) {
-        url += '&buscar=' + encodeURIComponent(buscar);
-    }
     
     window.open(url, '_blank');
 }

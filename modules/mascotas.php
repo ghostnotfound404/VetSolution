@@ -1,10 +1,88 @@
 <?php
 include('../includes/config.php');
 
+// Procesar el registro de nueva mascota
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validar que todos los campos requeridos estén presentes
+    if (isset($_POST['id_cliente']) && isset($_POST['nombre']) && isset($_POST['fecha_nacimiento']) && 
+        isset($_POST['especie']) && isset($_POST['genero'])) {
+        
+        $id_cliente = intval($_POST['id_cliente']);
+        $nombre = trim($_POST['nombre']);
+        $fecha_nacimiento = $_POST['fecha_nacimiento'];
+        $especie = $_POST['especie'];
+        $raza = isset($_POST['raza']) && !empty($_POST['raza']) ? $_POST['raza'] : 'Mestizo';
+        $genero = $_POST['genero'];
+        $esterilizado = isset($_POST['esterilizado']) ? $_POST['esterilizado'] : 'No';
+        
+        // Validar que el cliente existe
+        $query_cliente = "SELECT id_cliente FROM clientes WHERE id_cliente = ?";
+        $stmt_cliente = $conn->prepare($query_cliente);
+        $stmt_cliente->bind_param("i", $id_cliente);
+        $stmt_cliente->execute();
+        $result_cliente = $stmt_cliente->get_result();
+        
+        if ($result_cliente->num_rows > 0) {
+            // Insertar la mascota
+            $query_mascota = "INSERT INTO mascotas (id_cliente, nombre, fecha_nacimiento, especie, raza, genero, esterilizado, estado) VALUES (?, ?, ?, ?, ?, ?, ?, 'Activo')";
+            $stmt_mascota = $conn->prepare($query_mascota);
+            $stmt_mascota->bind_param("issssss", $id_cliente, $nombre, $fecha_nacimiento, $especie, $raza, $genero, $esterilizado);
+            
+            if ($stmt_mascota->execute()) {
+                // Registro exitoso - respuesta JSON
+                http_response_code(200);
+                echo json_encode(['success' => true, 'message' => 'Mascota registrada correctamente']);
+                exit();
+            } else {
+                // Error en la inserción
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Error al registrar la mascota: ' . $stmt_mascota->error]);
+                exit();
+            }
+            $stmt_mascota->close();
+        } else {
+            // Cliente no existe
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'El cliente seleccionado no existe']);
+            exit();
+        }
+        $stmt_cliente->close();
+    } else {
+        // Campos faltantes
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Todos los campos obligatorios deben ser completados']);
+        exit();
+    }
+}
+
+// Aplicar filtros si existe el parámetro filtro
+$where_clause = "";
+if (isset($_GET['filtro'])) {
+    $filtro = $_GET['filtro'];
+    
+    switch ($filtro) {
+        case 'caninos':
+            $where_clause = "WHERE m.especie = 'Canino'";
+            break;
+        case 'felinos':
+            $where_clause = "WHERE m.especie = 'Felino'";
+            break;
+        case 'esterilizados':
+            $where_clause = "WHERE m.esterilizado = 'Si'";
+            break;
+        case 'no_esterilizados':
+            $where_clause = "WHERE m.esterilizado = 'No'";
+            break;
+        default:
+            $where_clause = "";
+    }
+}
+
 // Obtener todas las mascotas con información del cliente
 $sql = "SELECT m.*, c.nombre as nombre_cliente, c.apellido as apellido_cliente 
         FROM mascotas m 
         INNER JOIN clientes c ON m.id_cliente = c.id_cliente 
+        $where_clause
         ORDER BY m.id_mascota DESC";
 $result = $conn->query($sql);
 
@@ -211,19 +289,19 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button class="btn btn-outline-primary" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Editar">
+                                                   data-bs-toggle="tooltip" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button class="btn btn-outline-info" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Historia Clínica">
+                                                   data-bs-toggle="tooltip" title="Historia">
                                                 <i class="fas fa-file-medical"></i>
                                             </button>
                                             <button class="btn btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Ver detalles">
+                                                   data-bs-toggle="tooltip" title="Ver">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <button class="btn btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Eliminar">
+                                                   data-bs-toggle="tooltip" title="Eliminar">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -251,11 +329,8 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>Todas las Mascotas</h5>
             <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel()">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('mascotas')">
                     <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="descargarPDF()">
-                    <i class="fas fa-file-pdf me-1"></i> PDF
                 </button>
             </div>
         </div>
@@ -313,19 +388,19 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm" role="group">
                                         <button class="btn btn-outline-primary" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                                data-bs-toggle="tooltip" title="Editar">
+                                               data-bs-toggle="tooltip" title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button class="btn btn-outline-info" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)" 
-                                                data-bs-toggle="tooltip" title="Historia Clínica">
+                                               data-bs-toggle="tooltip" title="Historia">
                                             <i class="fas fa-file-medical"></i>
                                         </button>
                                         <button class="btn btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
-                                                data-bs-toggle="tooltip" title="Ver detalles">
+                                               data-bs-toggle="tooltip" title="Ver">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <button class="btn btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                                data-bs-toggle="tooltip" title="Eliminar">
+                                               data-bs-toggle="tooltip" title="Eliminar">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -360,7 +435,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="modules/mascotas.php" method="POST" id="formNuevaMascota">
+                    <form id="formNuevaMascota">
                         <div class="row mb-4">
                             <div class="col-md-12">
                                 <h6 class="border-bottom pb-2"><i class="fas fa-user me-2"></i>Datos del Propietario</h6>
@@ -487,39 +562,6 @@ function verDetalles(id) {
     });
 }
 
-function eliminarMascota(id) {
-    Swal.fire({
-        title: '¿Estás seguro?',
-        text: "Esta acción no se puede deshacer",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'modules/eliminar_mascota.php',
-                method: 'POST',
-                data: { id: id },
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire('Eliminado', 'La mascota ha sido eliminada correctamente', 'success');
-                        // Recargar la página
-                        location.reload();
-                    } else {
-                        Swal.fire('Error', response.message || 'Error al eliminar la mascota', 'error');
-                    }
-                },
-                error: function() {
-                    Swal.fire('Error', 'Error al eliminar la mascota', 'error');
-                }
-            });
-        }
-    });
-}
-
 function filtrarMascotas(tipo) {
     let url = 'modules/mascotas.php?filtro=' + tipo;
     
@@ -568,22 +610,55 @@ function limpiarBusquedaMascota() {
     });
 }
 
-function descargarExcel() {
-    const tipoAuditoria = document.getElementById('auditoria_select').value;
-    if (!tipoAuditoria) {
-        Swal.fire('Advertencia', 'Por favor selecciona un tipo de auditoría', 'warning');
-        return;
-    }
-    window.open('exportar_excel.php?tipo=' + tipoAuditoria, '_blank');
+function descargarExcel(tabla) {
+    window.open('modules/exportar_excel.php?tabla=' + tabla, '_blank');
 }
 
-function descargarPDF() {
-    const tipoAuditoria = document.getElementById('auditoria_select').value;
-    if (!tipoAuditoria) {
-        Swal.fire('Advertencia', 'Por favor selecciona un tipo de auditoría', 'warning');
-        return;
-    }
-    window.open('exportar_pdf.php?tipo=' + tipoAuditoria, '_blank');
+function eliminarMascota(id) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede revertir",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'modules/eliminar_mascota.php',
+                method: 'POST',
+                data: { id_mascota: id },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire(
+                            '¡Eliminado!',
+                            response.message,
+                            'success'
+                        ).then(() => {
+                            // Recargar la página para actualizar la lista
+                            $('#contenido').load('modules/mascotas.php');
+                        });
+                    } else {
+                        Swal.fire(
+                            'Error',
+                            response.message,
+                            'error'
+                        );
+                    }
+                },
+                error: function() {
+                    Swal.fire(
+                        'Error',
+                        'Ocurrió un error al procesar la solicitud',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
 }
 
 // Eventos al cargar la página
@@ -684,9 +759,7 @@ function seleccionarPropietario(id, nombre) {
 function cargarRazas(especie) {
     const razas = {
         'Canino': ['Labrador', 'Golden Retriever', 'Pastor Alemán', 'Bulldog', 'Beagle', 'Poodle', 'Rottweiler', 'Yorkshire', 'Chihuahua', 'Mestizo'],
-        'Felino': ['Persa', 'Siamés', 'Maine Coon', 'Británico', 'Ragdoll', 'Bengalí', 'Abisinio', 'Mestizo'],
-        'Ave': ['Canario', 'Periquito', 'Loro', 'Cacatúa', 'Cotorra'],
-        'Roedor': ['Hamster', 'Conejo', 'Cobayo', 'Chinchilla']
+        'Felino': ['Persa', 'Siamés', 'Maine Coon', 'Británico', 'Ragdoll', 'Bengalí', 'Abisinio', 'Mestizo']
     };
     
     const select = $('#raza');
@@ -698,4 +771,214 @@ function cargarRazas(especie) {
         });
     }
 }
+
+// Manejar envío del formulario de nueva mascota
+$(document).ready(function() {
+    // Inicializar validaciones para formulario de edición
+    $(document).on('submit', '#formEditarMascota', function(e) {
+        e.preventDefault();
+        
+        // Validar campos obligatorios
+        if (!$('#id_cliente_editar').val()) {
+            Swal.fire('Error', 'Debe seleccionar un propietario', 'error');
+            return;
+        }
+        
+        if (!$('#nombre_mascota_editar').val().trim()) {
+            Swal.fire('Error', 'El nombre de la mascota es obligatorio', 'error');
+            return;
+        }
+        
+        if (!$('#fecha_nacimiento_editar').val()) {
+            Swal.fire('Error', 'La fecha de nacimiento es obligatoria', 'error');
+            return;
+        }
+        
+        if (!$('#especie_editar').val()) {
+            Swal.fire('Error', 'Debe seleccionar una especie', 'error');
+            return;
+        }
+        
+        if (!$('#genero_editar').val()) {
+            Swal.fire('Error', 'Debe seleccionar el género', 'error');
+            return;
+        }
+        
+        // Enviar datos vía AJAX
+        const formData = new FormData(this);
+        
+        // Debug - mostrar datos que se están enviando
+        console.log('ID Cliente:', $('#id_cliente_editar').val());
+        console.log('Nombre:', $('#nombre_mascota_editar').val());
+        console.log('Fecha Nacimiento:', $('#fecha_nacimiento_editar').val());
+        console.log('Especie:', $('#especie_editar').val());
+        
+        $.ajax({
+            url: 'modules/editar_mascota.php',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(response) {
+                console.log('Respuesta del servidor:', response);
+                if (response.success) {
+                    // Cerrar modal
+                    $('#editarMascotaModal').modal('hide');
+                    
+                    // Mostrar mensaje de éxito
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Mascota actualizada correctamente',
+                        confirmButtonText: 'Aceptar'
+                    }).then(() => {
+                        // Recargar solo el contenido de mascotas
+                        $('#contenido').load('modules/mascotas.php');
+                    });
+                } else {
+                    Swal.fire('Error', response.message || 'Error al actualizar la mascota', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error en la solicitud AJAX:', status, error);
+                console.log('Respuesta del servidor:', xhr.responseText);
+                Swal.fire('Error', 'Ocurrió un error al procesar la solicitud. Consulte la consola para más detalles.', 'error');
+            }
+        });
+    });
+
+    $('#formNuevaMascota').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Validar campos obligatorios
+        if (!$('#id_cliente').val()) {
+            Swal.fire('Error', 'Debe seleccionar un propietario', 'error');
+            return;
+        }
+        
+        if (!$('#nombre_mascota').val().trim()) {
+            Swal.fire('Error', 'El nombre de la mascota es obligatorio', 'error');
+            return;
+        }
+        
+        if (!$('#fecha_nacimiento').val()) {
+            Swal.fire('Error', 'La fecha de nacimiento es obligatoria', 'error');
+            return;
+        }
+        
+        if (!$('#especie').val()) {
+            Swal.fire('Error', 'Debe seleccionar una especie', 'error');
+            return;
+        }
+        
+        if (!$('#genero').val()) {
+            Swal.fire('Error', 'Debe seleccionar el género', 'error');
+            return;
+        }
+        
+        // Enviar datos via AJAX
+        const formData = new FormData();
+        formData.append('id_cliente', $('#id_cliente').val());
+        formData.append('nombre', $('#nombre_mascota').val().trim());
+        formData.append('fecha_nacimiento', $('#fecha_nacimiento').val());
+        formData.append('especie', $('#especie').val());
+        formData.append('raza', $('#raza').val() || 'Mestizo');
+        formData.append('genero', $('#genero').val());
+        formData.append('esterilizado', $('#esterilizado').val());
+        
+        $.ajax({
+            url: 'modules/mascotas.php',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Cerrar modal
+                    $('#nuevaMascotaModal').modal('hide');
+                    
+                    // Limpiar formulario
+                    $('#formNuevaMascota')[0].reset();
+                    $('#resultados_propietario').html('');
+                    $('#id_cliente').val('');
+                    
+                    // Recargar solo el contenido de mascotas
+                    $.ajax({
+                        url: 'modules/mascotas.php',
+                        method: 'GET',
+                        success: function(data) {
+                            $('#contenido').html(data);
+                        },
+                        error: function() {
+                            // Si falla, recargar toda la página
+                            window.location.reload();
+                        }
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                // Solo cerrar el modal y limpiar, sin mostrar mensaje de error
+                $('#nuevaMascotaModal').modal('hide');
+                $('#formNuevaMascota')[0].reset();
+                $('#resultados_propietario').html('');
+                $('#id_cliente').val('');
+            }
+        });
+    });
+    
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
 </script>
+
+<!-- Modal para Editar Mascota -->
+<div class="modal fade" id="editarMascotaModal" tabindex="-1" aria-labelledby="editarMascotaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="editarMascotaModalLabel">
+                    <i class="fas fa-edit me-2"></i> Editar Mascota
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="contenidoModalEditar">
+                <!-- Aquí se cargará el contenido dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="submit" form="formEditarMascota" class="btn btn-warning">
+                    <i class="fas fa-save me-1"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Detalles de Mascota -->
+<div class="modal fade" id="detallesMascotaModal" tabindex="-1" aria-labelledby="detallesMascotaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="detallesMascotaModalLabel">
+                    <i class="fas fa-paw me-2"></i> Detalles de la Mascota
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="contenidoModalDetalles">
+                <!-- Aquí se cargará el contenido dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

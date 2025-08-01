@@ -24,6 +24,7 @@ $(document).ready(function() {
     }
 
     // Funcionalidad para el formulario de crear cliente en modal
+    $(document).off('submit', '#formNuevoCliente');
     $(document).on('submit', '#formNuevoCliente', function(e) {
         e.preventDefault();
 
@@ -57,7 +58,7 @@ $(document).ready(function() {
         }
 
         if (errores.length > 0) {
-            alert("Errores encontrados:\n" + errores.join("\n"));
+            // Errores de validación - no hacer nada
             return;
         }
 
@@ -80,11 +81,11 @@ $(document).ready(function() {
                 
                 // Recargar contenido
                 cargarContenidoClientes();
-                
-                alert("Cliente creado con éxito");
             },
             error: function() {
-                alert("Error al crear el cliente.");
+                // Error silencioso - solo cerrar modal
+                $('#nuevoClienteModal').modal('hide');
+                $('#formNuevoCliente')[0].reset();
             }
         });
     });
@@ -147,34 +148,10 @@ $(document).ready(function() {
             }
         });
 
-        // Event listeners para los botones de auditoría
+        // Deshabilitamos los event listeners para los botones de Excel y PDF
+        // ya que ahora usamos onclick directo en el HTML
         $(document).off('click', '.btn-outline-success, .btn-outline-danger');
-        $(document).on('click', '.btn-outline-success', function() {
-            descargarExcel();
-        });
-        $(document).on('click', '.btn-outline-danger', function() {
-            descargarPDF();
-        });
     }
-
-    // Funciones para descargas (globales)
-    window.descargarExcel = function() {
-        const tipoAuditoria = document.getElementById('auditoria_select').value;
-        if (!tipoAuditoria) {
-            alert('Por favor selecciona un tipo de auditoría');
-            return;
-        }
-        window.open('modules/exportar_excel.php?tipo=' + tipoAuditoria, '_blank');
-    };
-
-    window.descargarPDF = function() {
-        const tipoAuditoria = document.getElementById('auditoria_select').value;
-        if (!tipoAuditoria) {
-            alert('Por favor selecciona un tipo de auditoría');
-            return;
-        }
-        window.open('modules/exportar_pdf.php?tipo=' + tipoAuditoria, '_blank');
-    };
 
     // Inicializar eventos al cargar la página
     inicializarEventosClientes();

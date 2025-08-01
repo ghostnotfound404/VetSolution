@@ -3,6 +3,7 @@ include('../includes/config.php');
 
 if (isset($_GET['q']) && !empty(trim($_GET['q']))) {
     $busqueda = trim($_GET['q']);
+    $modo = isset($_GET['modo']) ? $_GET['modo'] : '';
     
     // Usar prepared statement para seguridad
     $sql = "SELECT id_cliente, nombre, apellido, dni, celular 
@@ -27,7 +28,12 @@ if (isset($_GET['q']) && !empty(trim($_GET['q']))) {
             $dni = htmlspecialchars($row['dni']);
             $celular = htmlspecialchars($row['celular']);
             
-            echo "<a href='#' class='list-group-item list-group-item-action' onclick='seleccionarPropietario({$row['id_cliente']}, \"$nombreCompleto\")'>
+            // Determine which function to call based on mode
+            $onClickFunction = ($modo == 'editar') ? 
+                "seleccionarPropietarioEditar({$row['id_cliente']}, \"$nombreCompleto\")" : 
+                "seleccionarPropietario({$row['id_cliente']}, \"$nombreCompleto\")";
+            
+            echo "<a href='javascript:void(0);' class='list-group-item list-group-item-action' onclick='$onClickFunction'>
                     <div class='d-flex w-100 justify-content-between'>
                         <h6 class='mb-1'>$nombreCompleto</h6>
                         <small>DNI: $dni</small>

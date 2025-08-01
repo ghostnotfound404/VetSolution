@@ -15,12 +15,13 @@
     <link href="assets/css/productos.css" rel="stylesheet">
     <link href="assets/css/mascotas.css" rel="stylesheet">
     <link href="assets/css/servicios.css" rel="stylesheet">
+    <link href="assets/css/sidebar-fixed.css" rel="stylesheet">
 </head>
 <body>
     <div class="container-fluid">
         <div class="row flex-nowrap">
-            <!-- Barra Lateral - Ocultable en móviles -->
-            <div class="col-12 col-md-3 col-lg-2 px-0 bg-dark d-flex flex-column min-vh-100">
+            <!-- Barra Lateral - Ocultable en móviles, fija al desplazar -->
+            <div class="col-12 col-md-3 col-lg-2 px-0 bg-dark d-flex flex-column min-vh-100 sidebar-fixed">
                 <div class="d-flex align-items-center justify-content-between p-3">
                     <div class="w-100 text-center">
                         <span class="fs-4 text-white d-none d-md-inline">Vet App</span>
@@ -84,6 +85,8 @@
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/js/mascotas.js"></script>
     <script src="assets/js/clientes.js"></script>
 

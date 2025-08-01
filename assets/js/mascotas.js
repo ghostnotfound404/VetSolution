@@ -139,7 +139,7 @@ $('#buscar_propietario').on('input', function() {
     const busqueda = $(this).val().trim();
     if (busqueda.length >= 2) {
         $.ajax({
-            url: 'buscar_propietario.php',
+            url: 'modules/buscar_propietario.php',
             method: 'GET',
             data: { q: busqueda },
             success: function(response) {
@@ -204,14 +204,6 @@ function editarMascota(id) {
 function verHistoria(id) {
     // TODO: Redirigir a historia clínica
     alert(`Ver historia clínica de mascota ID: ${id}\n(Funcionalidad por implementar)`);
-}
-
-// Función para confirmar eliminación (si se implementa)
-function eliminarMascota(id, nombre) {
-    if (confirm(`¿Está seguro de que desea eliminar la mascota "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-        // TODO: Implementar eliminación
-        alert('Funcionalidad de eliminación por implementar');
-    }
 }
 
 // Función para calcular edad aproximada
