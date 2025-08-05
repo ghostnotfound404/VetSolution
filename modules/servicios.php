@@ -1,5 +1,10 @@
 <?php
 include('../includes/config.php');
+include('../includes/pagination.php');
+
+// Inicializar sistema de paginación
+$pagination = new PaginationHelper($conn, 10);
+$buscar = isset($_GET['buscar_servicio']) ? trim($_GET['buscar_servicio']) : '';
 
 // Procesar formulario de nuevo servicio
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -39,24 +44,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Obtener servicios (con búsqueda si se especifica)
-if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
-    $buscar_servicio = trim($_GET['buscar_servicio']);
-    
-    $search_sql = "SELECT * FROM servicios 
-                  WHERE nombre LIKE ?
-                  ORDER BY id_servicio DESC";
-    
-    $stmt = $conn->prepare($search_sql);
-    $searchTerm = "%$buscar_servicio%";
-    $stmt->bind_param("s", $searchTerm);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $stmt->close();
+// Obtener servicios con paginación
+if (!empty($buscar)) {
+    // Búsqueda con paginación
+    $search_fields = ['nombre'];
+    $serviciosData = $pagination->searchWithPagination(
+        'servicios', 
+        $search_fields, 
+        $buscar, 
+        '*', 
+        '', 
+        'id_servicio DESC'
+    );
 } else {
-    $sql = "SELECT * FROM servicios ORDER BY id_servicio DESC";
-    $result = $conn->query($sql);
+    // Listar todos con paginación
+    $serviciosData = $pagination->getPaginatedData(
+        'servicios', 
+        '*', 
+        '', 
+        '', 
+        'id_servicio DESC'
+    );
 }
+
+$servicios = $serviciosData['data'];
+$paginationInfo = $serviciosData['pagination'];
 ?>
 
 <div class="container-fluid px-4 servicios">
@@ -65,7 +77,7 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
         <h2 class="mb-0"><i class="fas fa-concierge-bell me-2"></i>Gestión de Servicios</h2>
     </div>
 
-    <!-- Tarjeta de Búsqueda - Versión corregida -->
+    <!-- Tarjeta de Búsqueda -->
     <div class="card mb-4">
         <div class="card-header bg-white">
             <div class="d-flex justify-content-between align-items-center">
@@ -83,114 +95,47 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                             <i class="fas fa-search me-1"></i> Buscar
                         </button>
                         <?php if (isset($_GET['buscar_servicio'])): ?>
-                        <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusquedaServicio()">
-                            <i class="fas fa-times me-1"></i> Limpiar
-                        </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="limpiarBusqueda()">
+                                <i class="fas fa-times me-1"></i> Limpiar
+                            </button>
                         <?php endif; ?>
                     </div>
                 </div>
-                <div class="col-md-4 d-flex align-items-stretch">
-                    <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
-                        <i class="fas fa-plus-circle me-1"></i> Nuevo Servicio
-                    </button>
+                <div class="col-md-4">
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
+                            <i class="fas fa-plus-circle me-1"></i> Nuevo Servicio
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Resultados de Búsqueda -->
-    <?php if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))): ?>
-        <?php
-        $buscar_servicio = trim($_GET['buscar_servicio']);
-        
-        $search_sql = "SELECT * FROM servicios 
-                      WHERE nombre LIKE ?
-                      ORDER BY id_servicio DESC";
-        
-        $stmt = $conn->prepare($search_sql);
-        $searchTerm = "%$buscar_servicio%";
-        $stmt->bind_param("s", $searchTerm);
-        $stmt->execute();
-        $search_result = $stmt->get_result();
-        ?>
-        
-        <div class="card mb-4">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-search-result me-2"></i>
-                    Resultados para: "<?php echo htmlspecialchars($buscar_servicio); ?>"
-                </h5>
-                <span class="badge bg-primary"><?php echo $search_result->num_rows; ?> encontrados</span>
-            </div>
-            <div class="card-body">
-                <?php if ($search_result->num_rows > 0): ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="50%" class="text-center">Servicio</th>
-                                    <th width="25%" class="text-center">Precio</th>
-                                    <th width="25%" class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($row = $search_result->fetch_assoc()): ?>
-                                <tr>
-                                    <td class="text-center">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <div class="flex-shrink-0 me-3">
-                                                <div class="bg-light rounded-circle p-2 text-center" style="width: 40px; height: 40px;">
-                                                    <i class="fas fa-concierge-bell text-primary"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-0"><?php echo htmlspecialchars($row['nombre']); ?></h6>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="fw-bold text-center">S/. <?php echo number_format($row['precio'], 2); ?></td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button class="btn btn-outline-primary" onclick="editarServicio(<?php echo $row['id_servicio']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-outline-danger" onclick="eliminarServicio(<?php echo $row['id_servicio']; ?>, '<?php echo htmlspecialchars($row['nombre']); ?>')" 
-                                                    data-bs-toggle="tooltip" title="Eliminar">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endwhile; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="text-center py-5">
-                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
-                        <h4>No se encontraron resultados</h4>
-                        <p class="text-muted">No hay servicios que coincidan con tu búsqueda</p>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php $stmt->close(); ?>
-    <?php endif; ?>
-
-    <!-- Lista Completa de Servicios (cuando no hay búsqueda) -->
-    <?php if (!isset($_GET['buscar_servicio'])): ?>
+    <!-- Lista de Servicios con Paginación -->
     <div class="card mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Todos los Servicios</h5>
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('servicios')">
-                    <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                <?php if (!empty($buscar)): ?>
+                    Resultados para: "<?php echo htmlspecialchars($buscar); ?>"
+                <?php else: ?>
+                    Todos los Servicios
+                <?php endif; ?>
+            </h5>
+            <div class="d-flex align-items-center">
+                <?php if (!empty($buscar)): ?>
+                    <span class="badge bg-primary me-2"><?php echo $paginationInfo['total_records']; ?> encontrados</span>
+                <?php endif; ?>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('servicios')">
+                        <i class="fas fa-file-excel me-1"></i> Excel
+                    </button>
+                </div>
             </div>
         </div>
         <div class="card-body">
-            <?php if ($result->num_rows > 0): ?>
+            <?php if (count($servicios) > 0): ?>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">
@@ -201,7 +146,7 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $result->fetch_assoc()): ?>
+                            <?php foreach ($servicios as $row): ?>
                             <tr>
                                 <td class="text-center">
                                     <div class="d-flex align-items-center justify-content-center">
@@ -229,207 +174,103 @@ if (isset($_GET['buscar_servicio']) && !empty(trim($_GET['buscar_servicio']))) {
                                     </div>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Paginación -->
+                <?php echo $pagination->generatePaginationHTML($paginationInfo, '#/servicios'); ?>
+                
             <?php else: ?>
                 <div class="text-center py-5">
-                    <i class="fas fa-concierge-bell fa-4x text-muted mb-3"></i>
-                    <h4>No hay servicios registrados</h4>
-                    <p class="text-muted">Comienza agregando nuevos servicios haciendo clic en el botón "Nuevo Servicio"</p>
-                    <button type="button" class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
-                        <i class="fas fa-plus-circle me-1"></i> Agregar Servicio
-                    </button>
+                    <?php if (!empty($buscar)): ?>
+                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                        <h4>No se encontraron servicios</h4>
+                        <p class="text-muted">No hay servicios que coincidan con tu búsqueda</p>
+                    <?php else: ?>
+                        <i class="fas fa-concierge-bell fa-4x text-muted mb-3"></i>
+                        <h4>No hay servicios registrados</h4>
+                        <p class="text-muted">Comienza agregando nuevos servicios haciendo clic en el botón "Nuevo Servicio"</p>
+                        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
+                            <i class="fas fa-plus-circle me-1"></i> Agregar Servicio
+                        </button>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
     </div>
-    <?php endif; ?>
+</div>
 
-    <!-- Modal para Crear Nuevo Servicio -->
-    <div class="modal fade" id="nuevoServicioModal" tabindex="-1" aria-labelledby="nuevoServicioModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="nuevoServicioModalLabel">
-                        <i class="fas fa-plus-circle me-2"></i> Nuevo Servicio
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form action="modules/servicios.php" method="POST" id="formNuevoServicio">
-                        <div class="mb-3">
-                            <label for="nombre_servicio" class="form-label">Nombre del servicio <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-stethoscope"></i></span>
-                                <input type="text" class="form-control" id="nombre_servicio" name="nombre" required placeholder="Ej: Consulta general, Vacunación, Cirugía">
+<!-- Modal para Crear Nuevo Servicio -->
+<div class="modal fade" id="nuevoServicioModal" tabindex="-1" aria-labelledby="nuevoServicioModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="nuevoServicioModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i> Nuevo Servicio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="modules/servicios.php" method="POST" id="formNuevoServicio">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="nombre_servicio" class="form-label">Nombre del servicio <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-concierge-bell"></i></span>
+                                    <input type="text" class="form-control" id="nombre_servicio" name="nombre" required>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="precio_servicio" class="form-label">Precio (S/.) <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text">S/.</span>
-                                <input type="number" class="form-control" id="precio_servicio" name="precio" step="0.01" min="0" required>
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="precio_servicio" class="form-label">Precio <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">S/.</span>
+                                    <input type="number" class="form-control" id="precio_servicio" name="precio" step="0.01" min="0" required>
+                                </div>
                             </div>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i> Cancelar
-                    </button>
-                    <button type="submit" form="formNuevoServicio" class="btn btn-success">
-                        <i class="fas fa-save me-1"></i> Guardar Servicio
-                    </button>
-                </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="submit" form="formNuevoServicio" class="btn btn-success">
+                    <i class="fas fa-save me-1"></i> Guardar Servicio
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function editarServicio(id) {
-    $.ajax({
-        url: 'modules/editar_servicio.php?id=' + id,
-        method: 'GET',
-        success: function(response) {
-            $('#contenidoModalEditar').html(response);
-            $('#editarServicioModal').modal('show');
-        },
-        error: function() {
-            Swal.fire('Error', 'No se pudo cargar la información del servicio', 'error');
-        }
-    });
-}
-
-function eliminarServicio(id, nombre) {
-    Swal.fire({
-        title: '¿Eliminar servicio?',
-        html: `Estás a punto de eliminar el servicio <b>${nombre}</b>. Esta acción no se puede deshacer.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'modules/eliminar_servicio.php',
-                method: 'POST',
-                data: { id: id },
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire(
-                            'Eliminado!',
-                            'El servicio ha sido eliminado.',
-                            'success'
-                        ).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire(
-                            'Error',
-                            response.message || 'No se pudo eliminar el servicio',
-                            'error'
-                        );
-                    }
-                },
-                error: function() {
-                    Swal.fire(
-                        'Error',
-                        'No se pudo completar la solicitud',
-                        'error'
-                    );
-                }
-            });
-        }
-    });
-}
-
-function realizarBusquedaServicio() {
-    const formData = new FormData(document.getElementById('formBuscarServicio'));
-    const searchParams = new URLSearchParams(formData);
-    
-    $.ajax({
-        url: 'modules/servicios.php?' + searchParams.toString(),
-        method: 'GET',
-        success: function(response) {
-            $('#contenido').html(response);
-        },
-        error: function() {
-            console.error('Error al realizar la búsqueda');
-        }
-    });
-}
-
-function limpiarBusquedaServicio() {
-    $.ajax({
-        url: 'modules/servicios.php',
-        method: 'GET',
-        success: function(response) {
-            $('#contenido').html(response);
-        },
-        error: function() {
-            console.error('Error al limpiar la búsqueda');
-        }
-    });
+function limpiarBusqueda() {
+    window.location.href = 'index.php#/servicios';
 }
 
 function descargarExcel(tabla) {
     window.open('modules/exportar_excel.php?tabla=' + tabla, '_blank');
 }
-    
-    window.open(url, '_blank');
+
+function editarServicio(id) {
+    console.log('Editar servicio:', id);
+    // Implementar lógica de edición
+}
+
+function eliminarServicio(id, nombre) {
+    if (confirm('¿Estás seguro de que deseas eliminar el servicio: ' + nombre + '?')) {
+        // Implementar lógica de eliminación
+        console.log('Eliminar servicio:', id);
+    }
 }
 
 $(document).ready(function() {
     // Inicializar tooltips
     $('[data-bs-toggle="tooltip"]').tooltip();
-    
-    // Event listeners para el formulario de búsqueda
-    $('#formBuscarServicio').on('submit', function(e) {
-        e.preventDefault();
-        realizarBusquedaServicio();
-    });
-    
-    // Validación del formulario de nuevo servicio
-    $('#formNuevoServicio').validate({
-        rules: {
-            nombre: {
-                required: true,
-                minlength: 3
-            },
-            precio: {
-                required: true,
-                number: true,
-                min: 0.01
-            }
-        },
-        messages: {
-            nombre: {
-                required: "Por favor ingresa el nombre del servicio",
-                minlength: "El nombre debe tener al menos 3 caracteres"
-            },
-            precio: {
-                required: "Por favor ingresa el precio del servicio",
-                number: "El precio debe ser un número válido",
-                min: "El precio debe ser mayor a 0"
-            }
-        },
-        errorElement: 'span',
-        errorPlacement: function (error, element) {
-            error.addClass('invalid-feedback');
-            element.closest('.form-group').append(error);
-        },
-        highlight: function (element, errorClass, validClass) {
-            $(element).addClass('is-invalid');
-        },
-        unhighlight: function (element, errorClass, validClass) {
-            $(element).removeClass('is-invalid');
-        }
-    });
 });
 </script>

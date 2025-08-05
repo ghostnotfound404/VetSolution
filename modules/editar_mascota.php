@@ -109,110 +109,178 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <!-- Formulario de edición de mascota -->
-<form id="formEditarMascota" method="POST">
-    <input type="hidden" name="id_mascota" value="<?php echo $id_mascota; ?>">
-    
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h6 class="border-bottom pb-2"><i class="fas fa-user me-2"></i>Datos del Propietario</h6>
-        </div>
-        <div class="col-md-12">
-            <div class="mb-3">
-                <label for="buscar_propietario_editar" class="form-label">Propietario <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input type="text" class="form-control" id="buscar_propietario_editar" 
-                           value="<?php echo htmlspecialchars($mascota['nombre_cliente'] . ' ' . $mascota['apellido_cliente']); ?>" 
-                           placeholder="Nombre, apellido o documento..." readonly>
-                    <button type="button" class="btn btn-outline-secondary" id="limpiar_propietario_editar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <input type="hidden" id="id_cliente_editar" name="id_cliente" 
-                           value="<?php echo $mascota['id_cliente']; ?>" required>
-                </div>
-                <small class="form-text text-muted">Haga clic en el campo para buscar otro propietario</small>
-                <div id="resultados_propietario_editar" class="mt-2"></div>
+<div class="modal-header bg-primary text-white">
+    <h5 class="modal-title d-flex align-items-center">
+        <i class="fas fa-edit me-2"></i> 
+        <span class="d-none d-sm-inline">Editar Mascota</span>
+        <span class="d-inline d-sm-none">Editar</span>
+    </h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body p-3 p-md-4">
+    <form id="formEditarMascota" method="POST">
+        <input type="hidden" name="id_mascota" value="<?php echo $id_mascota; ?>">
+        
+        <!-- Datos del Propietario -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h6 class="border-bottom pb-2 fw-semibold">
+                    <i class="fas fa-user text-muted me-2"></i>Datos del Propietario
+                </h6>
             </div>
-        </div>
-    </div>
-    
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h6 class="border-bottom pb-2"><i class="fas fa-paw me-2"></i>Datos de la Mascota</h6>
-        </div>
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="nombre_mascota_editar" class="form-label">Nombre <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-tag"></i></span>
-                    <input type="text" class="form-control" id="nombre_mascota_editar" name="nombre" 
-                           value="<?php echo htmlspecialchars($mascota['nombre']); ?>" required>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="fecha_nacimiento_editar" class="form-label">Fecha Nacimiento <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-calendar"></i></span>
-                    <input type="date" class="form-control" id="fecha_nacimiento_editar" name="fecha_nacimiento" 
-                           value="<?php echo $mascota['fecha_nacimiento']; ?>" required>
+            <div class="col-12">
+                <div class="mb-3">
+                    <label for="buscar_propietario_editar" class="form-label fw-semibold">
+                        <i class="fas fa-search text-muted me-1"></i>
+                        Propietario <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text d-none d-sm-flex"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="buscar_propietario_editar" 
+                               value="<?php echo htmlspecialchars($mascota['nombre_cliente'] . ' ' . $mascota['apellido_cliente']); ?>" 
+                               placeholder="Nombre, apellido o documento..." readonly>
+                        <button type="button" class="btn btn-outline-secondary" id="limpiar_propietario_editar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <input type="hidden" id="id_cliente_editar" name="id_cliente" 
+                               value="<?php echo $mascota['id_cliente']; ?>" required>
+                    </div>
+                    <div class="form-text text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Haga clic en el campo para buscar otro propietario
+                    </div>
+                    <div id="resultados_propietario_editar" class="mt-2"></div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="especie_editar" class="form-label">Especie <span class="text-danger">*</span></label>
-                <select class="form-select" id="especie_editar" name="especie" required>
-                    <option value="">Seleccionar...</option>
-                    <option value="Canino" <?php echo $mascota['especie'] == 'Canino' ? 'selected' : ''; ?>>Canino</option>
-                    <option value="Felino" <?php echo $mascota['especie'] == 'Felino' ? 'selected' : ''; ?>>Felino</option>
-                    <option value="Ave" <?php echo $mascota['especie'] == 'Ave' ? 'selected' : ''; ?>>Ave</option>
-                    <option value="Roedor" <?php echo $mascota['especie'] == 'Roedor' ? 'selected' : ''; ?>>Roedor</option>
-                    <option value="Otro" <?php echo $mascota['especie'] == 'Otro' ? 'selected' : ''; ?>>Otro</option>
-                </select>
+        
+        <!-- Datos de la Mascota -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h6 class="border-bottom pb-2 fw-semibold">
+                    <i class="fas fa-paw text-muted me-2"></i>Datos de la Mascota
+                </h6>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="mb-3">
+                    <label for="nombre_mascota_editar" class="form-label fw-semibold">
+                        <i class="fas fa-tag text-muted me-1"></i>
+                        Nombre <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light d-none d-sm-flex"><i class="fas fa-tag"></i></span>
+                        <input type="text" class="form-control" id="nombre_mascota_editar" name="nombre" 
+                               value="<?php echo htmlspecialchars($mascota['nombre']); ?>" 
+                               placeholder="Nombre de la mascota" required>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="mb-3">
+                    <label for="fecha_nacimiento_editar" class="form-label fw-semibold">
+                        <i class="fas fa-calendar text-muted me-1"></i>
+                        Fecha Nacimiento <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light d-none d-sm-flex"><i class="fas fa-calendar"></i></span>
+                        <input type="date" class="form-control" id="fecha_nacimiento_editar" name="fecha_nacimiento" 
+                               value="<?php echo $mascota['fecha_nacimiento']; ?>" required>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="especie_editar" class="form-label fw-semibold">
+                        <i class="fas fa-dna text-muted me-1"></i>
+                        Especie <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select" id="especie_editar" name="especie" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="Canino" <?php echo $mascota['especie'] == 'Canino' ? 'selected' : ''; ?>>Canino</option>
+                        <option value="Felino" <?php echo $mascota['especie'] == 'Felino' ? 'selected' : ''; ?>>Felino</option>
+                        <option value="Ave" <?php echo $mascota['especie'] == 'Ave' ? 'selected' : ''; ?>>Ave</option>
+                        <option value="Roedor" <?php echo $mascota['especie'] == 'Roedor' ? 'selected' : ''; ?>>Roedor</option>
+                        <option value="Otro" <?php echo $mascota['especie'] == 'Otro' ? 'selected' : ''; ?>>Otro</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="raza_editar" class="form-label fw-semibold">
+                        <i class="fas fa-paw text-muted me-1"></i>
+                        Raza
+                    </label>
+                    <select class="form-select" id="raza_editar" name="raza">
+                        <option value="">Seleccionar...</option>
+                        <!-- Las opciones de raza se cargarán por JavaScript -->
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="genero_editar" class="form-label fw-semibold">
+                        <i class="fas fa-venus-mars text-muted me-1"></i>
+                        Género <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select" id="genero_editar" name="genero" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="Macho" <?php echo $mascota['genero'] == 'Macho' ? 'selected' : ''; ?>>Macho</option>
+                        <option value="Hembra" <?php echo $mascota['genero'] == 'Hembra' ? 'selected' : ''; ?>>Hembra</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="mb-3">
+                    <label for="esterilizado_editar" class="form-label fw-semibold">
+                        <i class="fas fa-cut text-muted me-1"></i>
+                        Esterilizado
+                    </label>
+                    <select class="form-select" id="esterilizado_editar" name="esterilizado">
+                        <option value="No" <?php echo $mascota['esterilizado'] == 'No' ? 'selected' : ''; ?>>No</option>
+                        <option value="Si" <?php echo $mascota['esterilizado'] == 'Si' ? 'selected' : ''; ?>>Sí</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="mb-3">
+                    <label for="estado_editar" class="form-label fw-semibold">
+                        <i class="fas fa-heartbeat text-muted me-1"></i>
+                        Estado
+                    </label>
+                    <select class="form-select" id="estado_editar" name="estado">
+                        <option value="Activo" <?php echo $mascota['estado'] == 'Activo' ? 'selected' : ''; ?>>Activo</option>
+                        <option value="Inactivo" <?php echo $mascota['estado'] == 'Inactivo' ? 'selected' : ''; ?>>Inactivo</option>
+                        <option value="Fallecido" <?php echo $mascota['estado'] == 'Fallecido' ? 'selected' : ''; ?>>Fallecido</option>
+                    </select>
+                </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="raza_editar" class="form-label">Raza</label>
-                <select class="form-select" id="raza_editar" name="raza">
-                    <option value="">Seleccionar...</option>
-                    <!-- Las opciones de raza se cargarán por JavaScript -->
-                </select>
+        
+        <!-- Información adicional -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-light border d-flex align-items-center mb-0">
+                    <i class="fas fa-lightbulb text-warning me-2"></i>
+                    <div class="flex-grow-1">
+                        <small class="mb-0 text-muted">
+                            <strong>Tip:</strong> Verifica que todos los datos estén correctos antes de guardar los cambios.
+                        </small>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="mb-3">
-                <label for="genero_editar" class="form-label">Género <span class="text-danger">*</span></label>
-                <select class="form-select" id="genero_editar" name="genero" required>
-                    <option value="">Seleccionar...</option>
-                    <option value="Macho" <?php echo $mascota['genero'] == 'Macho' ? 'selected' : ''; ?>>Macho</option>
-                    <option value="Hembra" <?php echo $mascota['genero'] == 'Hembra' ? 'selected' : ''; ?>>Hembra</option>
-                </select>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="esterilizado_editar" class="form-label">Esterilizado</label>
-                <select class="form-select" id="esterilizado_editar" name="esterilizado">
-                    <option value="No" <?php echo $mascota['esterilizado'] == 'No' ? 'selected' : ''; ?>>No</option>
-                    <option value="Si" <?php echo $mascota['esterilizado'] == 'Si' ? 'selected' : ''; ?>>Sí</option>
-                </select>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="estado_editar" class="form-label">Estado</label>
-                <select class="form-select" id="estado_editar" name="estado">
-                    <option value="Activo" <?php echo $mascota['estado'] == 'Activo' ? 'selected' : ''; ?>>Activo</option>
-                    <option value="Inactivo" <?php echo $mascota['estado'] == 'Inactivo' ? 'selected' : ''; ?>>Inactivo</option>
-                    <option value="Fallecido" <?php echo $mascota['estado'] == 'Fallecido' ? 'selected' : ''; ?>>Fallecido</option>
-                </select>
-            </div>
-        </div>
-    </div>
-</form>
+    </form>
+</div>
+<div class="modal-footer flex-column flex-sm-row p-3">
+    <button type="button" class="btn btn-secondary w-100 w-sm-auto mb-2 mb-sm-0 me-sm-2" data-bs-dismiss="modal">
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" form="formEditarMascota" class="btn btn-primary w-100 w-sm-auto">
+        <i class="fas fa-save me-1"></i> 
+        <span class="d-none d-sm-inline">Guardar Cambios</span>
+        <span class="d-inline d-sm-none">Guardar</span>
+    </button>
+</div>
 
 <script>
 $(document).ready(function() {
@@ -280,6 +348,101 @@ $(document).ready(function() {
         // Mostrar mensaje informativo
         $('#resultados_propietario_editar').html('<div class="alert alert-warning py-2">Por favor, busque y seleccione un nuevo propietario</div>');
     });
+    
+    // Manejar envío del formulario
+    $('#formEditarMascota').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Mostrar loading en el botón
+        const $submitBtn = $('button[type="submit"]');
+        const originalText = $submitBtn.html();
+        $submitBtn.html('<i class="fas fa-spinner fa-spin me-1"></i> Guardando...').prop('disabled', true);
+        
+        $.ajax({
+            url: 'modules/editar_mascota.php',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            timeout: 10000,
+            success: function(response) {
+                if (response.success) {
+                    // Mostrar mensaje de éxito con SweetAlert
+                    Swal.fire({
+                        title: '¡Actualizado!',
+                        html: `
+                            <div class="text-center">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <p class="mb-0">La mascota ha sido actualizada correctamente.</p>
+                            </div>
+                        `,
+                        icon: 'success',
+                        confirmButtonColor: '#28a745',
+                        confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido',
+                        customClass: {
+                            popup: 'swal-responsive'
+                        }
+                    }).then(() => {
+                        // Cerrar modal y recargar la página
+                        $('#editarMascotaModal').modal('hide');
+                        location.reload();
+                    });
+                } else {
+                    // Mostrar error
+                    Swal.fire({
+                        title: 'Error al actualizar',
+                        html: `
+                            <div class="text-center">
+                                <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                                <p class="mb-0">${response.message || 'No se pudo actualizar la mascota'}</p>
+                            </div>
+                        `,
+                        icon: 'error',
+                        confirmButtonColor: '#dc3545',
+                        confirmButtonText: '<i class="fas fa-times me-1"></i> Cerrar',
+                        customClass: {
+                            popup: 'swal-responsive'
+                        }
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                let errorMessage = 'Error al procesar la solicitud';
+                
+                if (status === 'timeout') {
+                    errorMessage = 'La solicitud tardó demasiado tiempo. Verifica tu conexión.';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Error interno del servidor.';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'Recurso no encontrado.';
+                }
+                
+                Swal.fire({
+                    title: 'Error de conexión',
+                    html: `
+                        <div class="text-center">
+                            <i class="fas fa-wifi fa-3x text-danger mb-3"></i>
+                            <p class="mb-0">${errorMessage}</p>
+                        </div>
+                    `,
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: '<i class="fas fa-refresh me-1"></i> Reintentar',
+                    customClass: {
+                        popup: 'swal-responsive'
+                    }
+                });
+            },
+            complete: function() {
+                // Restaurar botón
+                $submitBtn.html(originalText).prop('disabled', false);
+            }
+        });
+    });
+    
+    // Ajustar tamaño de textarea en dispositivos móviles
+    if (window.innerWidth < 768) {
+        $('.form-control, .form-select').css('font-size', '16px');
+    }
 });
 
 function cargarRazasEdicion(especie, razaSeleccionada = '') {

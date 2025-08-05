@@ -1,5 +1,15 @@
 <?php
 include('../includes/config.php');
+include('../includes/pagination.php');
+
+// Optimizar base de datos al cargar por primera vez
+if (!isset($_SESSION['db_optimized'])) {
+    optimizeDatabase($conn);
+    $_SESSION['db_optimized'] = true;
+}
+
+// Inicializar paginación
+$pagination = new PaginationHelper($conn, 10);
 
 // Procesar el registro de nueva mascota
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -57,34 +67,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Aplicar filtros si existe el parámetro filtro
 $where_clause = "";
-if (isset($_GET['filtro'])) {
-    $filtro = $_GET['filtro'];
-    
-    switch ($filtro) {
-        case 'caninos':
-            $where_clause = "WHERE m.especie = 'Canino'";
-            break;
-        case 'felinos':
-            $where_clause = "WHERE m.especie = 'Felino'";
-            break;
-        case 'esterilizados':
-            $where_clause = "WHERE m.esterilizado = 'Si'";
-            break;
-        case 'no_esterilizados':
-            $where_clause = "WHERE m.esterilizado = 'No'";
-            break;
-        default:
-            $where_clause = "";
-    }
+// Obtener mascotas con paginación
+$filtro = isset($_GET['filtro']) ? $_GET['filtro'] : '';
+$where_conditions = [];
+
+// Aplicar filtros
+switch ($filtro) {
+    case 'caninos':
+        $where_conditions[] = "m.especie = 'Canino'";
+        break;
+    case 'felinos':
+        $where_conditions[] = "m.especie = 'Felino'";
+        break;
+    case 'esterilizados':
+        $where_conditions[] = "m.esterilizado = 'Si'";
+        break;
+    case 'no_esterilizados':
+        $where_conditions[] = "m.esterilizado = 'No'";
+        break;
 }
 
-// Obtener todas las mascotas con información del cliente
-$sql = "SELECT m.*, c.nombre as nombre_cliente, c.apellido as apellido_cliente 
-        FROM mascotas m 
-        INNER JOIN clientes c ON m.id_cliente = c.id_cliente 
-        $where_clause
-        ORDER BY m.id_mascota DESC";
-$result = $conn->query($sql);
+$where_clause = !empty($where_conditions) ? implode(' AND ', $where_conditions) : '';
+$joins = "INNER JOIN clientes c ON m.id_cliente = c.id_cliente";
+
+// Si hay búsqueda, usar searchWithPagination
+if (!empty($buscar)) {
+    $search_fields = ['m.nombre', 'c.nombre', 'c.apellido', 'm.raza', 'm.especie'];
+    $pagination_result = $pagination->searchWithPagination(
+        'mascotas m', 
+        $search_fields, 
+        $buscar, 
+        'm.*, c.nombre as nombre_cliente, c.apellido as apellido_cliente', 
+        $where_clause, 
+        'm.id_mascota DESC'
+    );
+} else {
+    $pagination_result = $pagination->getPaginatedData(
+        'mascotas m', 
+        'm.*, c.nombre as nombre_cliente, c.apellido as apellido_cliente', 
+        $joins, 
+        $where_clause, 
+        'm.id_mascota DESC'
+    );
+}
+
+$mascotas = $pagination_result['data'];
+$total_pages = $pagination_result['pagination']['total_pages'] ?? 1;
+$current_page = $pagination_result['pagination']['current_page'] ?? 1;
+$total_records = $pagination_result['pagination']['total_records'] ?? 0;
 
 // Obtener estadísticas
 $stats_sql = "SELECT 
@@ -206,152 +236,48 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
         </div>
     </div>
 
-    <!-- Resultados de Búsqueda -->
-    <?php if (isset($_GET['buscar_mascota']) && !empty(trim($_GET['buscar_mascota']))): ?>
-        <?php
-        $buscar_mascota = trim($_GET['buscar_mascota']);
-        
-        $search_sql = "SELECT m.*, c.nombre as nombre_cliente, c.apellido as apellido_cliente 
-                      FROM mascotas m 
-                      INNER JOIN clientes c ON m.id_cliente = c.id_cliente 
-                      WHERE m.nombre LIKE ? 
-                         OR c.nombre LIKE ? 
-                         OR c.apellido LIKE ?
-                         OR CONCAT(c.nombre, ' ', c.apellido) LIKE ?
-                      ORDER BY m.id_mascota DESC";
-        
-        $stmt = $conn->prepare($search_sql);
-        $searchTerm = "%$buscar_mascota%";
-        $stmt->bind_param("ssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm);
-        $stmt->execute();
-        $search_result = $stmt->get_result();
-        ?>
-        
-        <div class="card mb-4">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-search-result me-2"></i>
-                    Resultados para: "<?php echo htmlspecialchars($buscar_mascota); ?>"
-                </h5>
-                <span class="badge bg-primary"><?php echo $search_result->num_rows; ?> encontrados</span>
-            </div>
-            <div class="card-body">
-                <?php if ($search_result->num_rows > 0): ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Mascota</th>
-                                    <th>Especie/Raza</th>
-                                    <th>Propietario</th>
-                                    <th>Edad</th>
-                                    <th>Estado</th>
-                                    <th width="120" class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($row = $search_result->fetch_assoc()): ?>
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-shrink-0 me-3">
-                                                <div class="bg-light rounded-circle p-2 text-center" style="width: 40px; height: 40px;">
-                                                    <i class="fas <?php echo $row['especie'] == 'Felino' ? 'fa-cat' : 'fa-dog'; ?> text-primary"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-0"><?php echo htmlspecialchars($row['nombre']); ?></h6>
-                                                <small class="text-muted"><?php echo htmlspecialchars($row['genero']); ?></small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-<?php echo $row['especie'] == 'Canino' ? 'success' : 'info'; ?>"><?php echo htmlspecialchars($row['especie']); ?></span>
-                                        <div class="small text-muted"><?php echo htmlspecialchars($row['raza']); ?></div>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></td>
-                                    <td>
-                                        <?php 
-                                            $fechaNac = new DateTime($row['fecha_nacimiento']);
-                                            $hoy = new DateTime();
-                                            $edad = $hoy->diff($fechaNac);
-                                            echo $edad->y . ' años, ' . $edad->m . ' meses';
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-<?php echo $row['estado'] == 'Activo' ? 'success' : 'secondary'; ?>">
-                                            <?php echo htmlspecialchars($row['estado']); ?>
-                                        </span>
-                                        <?php if ($row['esterilizado'] == 'Si'): ?>
-                                            <div class="small text-muted"><i class="fas fa-check-circle text-success"></i> Esterilizado</div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button class="btn btn-outline-primary" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                                   data-bs-toggle="tooltip" title="Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-outline-info" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)" 
-                                                   data-bs-toggle="tooltip" title="Historia">
-                                                <i class="fas fa-file-medical"></i>
-                                            </button>
-                                            <button class="btn btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
-                                                   data-bs-toggle="tooltip" title="Ver">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                                   data-bs-toggle="tooltip" title="Eliminar">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endwhile; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <div class="text-center py-5">
-                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
-                        <h4>No se encontraron resultados</h4>
-                        <p class="text-muted">No hay mascotas que coincidan con tu búsqueda</p>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php $stmt->close(); ?>
-    <?php endif; ?>
-
-    <!-- Lista Completa de Mascotas (cuando no hay búsqueda) -->
-    <?php if (!isset($_GET['buscar_mascota'])): ?>
+    <!-- Lista de Mascotas con Paginación -->
     <div class="card mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Todas las Mascotas</h5>
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('mascotas')">
-                    <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                <?php if (!empty($buscar)): ?>
+                    Resultados para: "<?php echo htmlspecialchars($buscar); ?>"
+                <?php else: ?>
+                    Todas las Mascotas
+                <?php endif; ?>
+            </h5>
+            <div class="d-flex align-items-center">
+                <?php if (!empty($buscar)): ?>
+                    <span class="badge bg-primary me-2"><?php echo $total_records; ?> encontrados</span>
+                <?php endif; ?>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="descargarExcel('mascotas')">
+                        <i class="fas fa-file-excel me-1"></i> Excel
+                    </button>
+                </div>
             </div>
         </div>
         <div class="card-body">
-            <?php if ($result->num_rows > 0): ?>
+            <?php if (count($mascotas) > 0): ?>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th>Mascota</th>
-                                <th>Especie/Raza</th>
-                                <th>Propietario</th>
-                                <th>Edad</th>
-                                <th>Estado</th>
-                                <th width="120" class="text-center">Acciones</th>
+                                <th width="25%" class="d-none d-sm-table-cell">Mascota</th>
+                                <th width="100%" class="d-table-cell d-sm-none">Información de la Mascota</th>
+                                <th width="20%" class="d-none d-md-table-cell">Especie/Raza</th>
+                                <th width="20%" class="d-none d-lg-table-cell">Propietario</th>
+                                <th width="15%" class="d-none d-lg-table-cell">Edad</th>
+                                <th width="15%" class="d-none d-md-table-cell">Estado</th>
+                                <th width="15%" class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $result->fetch_assoc()): ?>
+                            <?php foreach ($mascotas as $row): ?>
                             <tr>
-                                <td>
+                                <!-- Vista Desktop - Mascota -->
+                                <td class="d-none d-sm-table-cell">
                                     <div class="d-flex align-items-center">
                                         <div class="flex-shrink-0 me-3">
                                             <div class="bg-light rounded-circle p-2 text-center" style="width: 40px; height: 40px;">
@@ -364,12 +290,73 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                
+                                <!-- Vista Mobile - Información Completa -->
+                                <td class="d-table-cell d-sm-none">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-start mb-2">
+                                                <div class="flex-shrink-0 me-3">
+                                                    <div class="bg-white rounded-circle p-2 text-center" style="width: 45px; height: 45px;">
+                                                        <i class="fas <?php echo $row['especie'] == 'Felino' ? 'fa-cat' : 'fa-dog'; ?> text-primary" style="font-size: 16px;"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1 fw-bold"><?php echo htmlspecialchars($row['nombre']); ?></h6>
+                                                    <div class="row g-2 text-sm">
+                                                        <div class="col-6">
+                                                            <span class="text-muted">Especie:</span>
+                                                            <div><span class="badge bg-<?php echo $row['especie'] == 'Canino' ? 'success' : 'info'; ?> rounded-pill"><?php echo htmlspecialchars($row['especie']); ?></span></div>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <span class="text-muted">Género:</span>
+                                                            <div class="fw-bold"><?php echo htmlspecialchars($row['genero']); ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row g-2 text-sm mt-1">
+                                                        <div class="col-6">
+                                                            <span class="text-muted">Raza:</span>
+                                                            <div class="fw-bold"><?php echo htmlspecialchars($row['raza']); ?></div>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <span class="text-muted">Edad:</span>
+                                                            <div class="fw-bold">
+                                                                <?php 
+                                                                    $fechaNac = new DateTime($row['fecha_nacimiento']);
+                                                                    $hoy = new DateTime();
+                                                                    $edad = $hoy->diff($fechaNac);
+                                                                    echo $edad->y . 'a ' . $edad->m . 'm';
+                                                                ?>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <div class="d-flex align-items-center justify-content-between">
+                                                            <div>
+                                                                <span class="text-muted small">Propietario:</span>
+                                                                <div class="fw-bold small"><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></div>
+                                                            </div>
+                                                            <div class="d-flex flex-column align-items-end">
+                                                                <span class="badge bg-<?php echo $row['estado'] == 'Activo' ? 'success' : 'secondary'; ?> rounded-pill">
+                                                                    <?php echo htmlspecialchars($row['estado']); ?>
+                                                                </span>
+                                                                <?php if ($row['esterilizado'] == 'Si'): ?>
+                                                                    <small class="text-success mt-1"><i class="fas fa-check-circle"></i> Esterilizado</small>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="d-none d-md-table-cell">
                                     <span class="badge bg-<?php echo $row['especie'] == 'Canino' ? 'success' : 'info'; ?>"><?php echo htmlspecialchars($row['especie']); ?></span>
                                     <div class="small text-muted"><?php echo htmlspecialchars($row['raza']); ?></div>
                                 </td>
-                                <td><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></td>
-                                <td>
+                                <td class="d-none d-lg-table-cell"><?php echo htmlspecialchars($row['nombre_cliente'] . ' ' . $row['apellido_cliente']); ?></td>
+                                <td class="d-none d-lg-table-cell">
                                     <?php 
                                         $fechaNac = new DateTime($row['fecha_nacimiento']);
                                         $hoy = new DateTime();
@@ -377,7 +364,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                         echo $edad->y . ' años, ' . $edad->m . ' meses';
                                     ?>
                                 </td>
-                                <td>
+                                <td class="d-none d-md-table-cell">
                                     <span class="badge bg-<?php echo $row['estado'] == 'Activo' ? 'success' : 'secondary'; ?>">
                                         <?php echo htmlspecialchars($row['estado']); ?>
                                     </span>
@@ -386,43 +373,64 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <button class="btn btn-outline-primary" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                               data-bs-toggle="tooltip" title="Editar">
+                                    <div class="btn-group d-none d-md-flex" role="group">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)" 
+                                               data-bs-toggle="tooltip" title="Editar mascota">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-outline-info" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)" 
-                                               data-bs-toggle="tooltip" title="Historia">
+                                        <button class="btn btn-sm btn-outline-info" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)" 
+                                               data-bs-toggle="tooltip" title="Historia clínica">
                                             <i class="fas fa-file-medical"></i>
                                         </button>
-                                        <button class="btn btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
-                                               data-bs-toggle="tooltip" title="Ver">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="verDetalles(<?php echo $row['id_mascota']; ?>)" 
+                                               data-bs-toggle="tooltip" title="Ver detalles">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
-                                               data-bs-toggle="tooltip" title="Eliminar">
+                                        <button class="btn btn-sm btn-outline-danger" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)" 
+                                               data-bs-toggle="tooltip" title="Eliminar mascota">
                                             <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Botones para móviles -->
+                                    <div class="d-flex d-md-none flex-column gap-1">
+                                        <button class="btn btn-sm btn-outline-primary w-100" onclick="editarMascota(<?php echo $row['id_mascota']; ?>)">
+                                            <i class="fas fa-edit me-1"></i> Editar
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info w-100" onclick="verHistoria(<?php echo $row['id_mascota']; ?>)">
+                                            <i class="fas fa-file-medical me-1"></i> Historia
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger w-100" onclick="eliminarMascota(<?php echo $row['id_mascota']; ?>)">
+                                            <i class="fas fa-trash me-1"></i> Eliminar
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Paginación -->
+                <?php echo $pagination->generatePaginationHTML($pagination_result['pagination'], '#/mascotas'); ?>
+                
             <?php else: ?>
                 <div class="text-center py-5">
-                    <i class="fas fa-paw fa-4x text-muted mb-3"></i>
-                    <h4>No hay mascotas registradas</h4>
-                    <p class="text-muted">Comienza registrando nuevas mascotas haciendo clic en el botón "Nueva Mascota"</p>
-                    <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#nuevaMascotaModal">
-                        <i class="fas fa-plus-circle me-1"></i> Registrar Mascota
-                    </button>
-                </div>
+                    <?php if (!empty($buscar)): ?>
+                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                        <h4>No se encontraron resultados</h4>
+                        <p class="text-muted">No hay mascotas que coincidan con tu búsqueda</p>
+                    <?php else: ?>
+                        <i class="fas fa-paw fa-4x text-muted mb-3"></i>
+                        <h4>No hay mascotas registradas</h4>
+                        <p class="text-muted">Comienza registrando nuevas mascotas haciendo clic en el botón "Nueva Mascota"</p>
+                        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#nuevaMascotaModal">
+                            <i class="fas fa-plus-circle me-1"></i> Registrar Mascota
+                        </button>
+                    <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
-    <?php endif; ?>
 
     <!-- Modal para Nueva Mascota -->
     <div class="modal fade" id="nuevaMascotaModal" tabindex="-1" aria-labelledby="nuevaMascotaModalLabel" aria-hidden="true">
@@ -534,15 +542,64 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
 <script>
 // Funciones principales
 function editarMascota(id) {
+    // Resetear el contenido del modal con loading
+    $('#contenidoModalEditar').html(`
+        <div class="modal-body text-center p-5">
+            <div class="d-flex flex-column align-items-center">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <h5 class="text-muted">Cargando información de la mascota...</h5>
+                <p class="text-muted small mb-0">Por favor, espera un momento</p>
+            </div>
+        </div>
+    `);
+    
+    // Mostrar el modal inmediatamente
+    $('#editarMascotaModal').modal('show');
+    
     $.ajax({
-        url: 'modules/editar_mascota.php?id=' + id,
+        url: 'modules/editar_mascota.php',
         method: 'GET',
+        data: { id: id },
+        timeout: 10000, // 10 segundos de timeout
         success: function(response) {
             $('#contenidoModalEditar').html(response);
-            $('#editarMascotaModal').modal('show');
         },
-        error: function() {
-            Swal.fire('Error', 'No se pudo cargar la información de la mascota', 'error');
+        error: function(xhr, status, error) {
+            let errorMessage = 'No se pudo cargar el formulario de edición';
+            
+            if (status === 'timeout') {
+                errorMessage = 'La solicitud tardó demasiado tiempo. Verifica tu conexión.';
+            } else if (xhr.status === 404) {
+                errorMessage = 'Mascota no encontrada.';
+            } else if (xhr.status === 500) {
+                errorMessage = 'Error interno del servidor.';
+            }
+            
+            $('#contenidoModalEditar').html(`
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Error al cargar
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-5">
+                    <div class="d-flex flex-column align-items-center">
+                        <i class="fas fa-exclamation-circle fa-4x text-danger mb-3"></i>
+                        <h5 class="text-danger mb-3">¡Ups! Algo salió mal</h5>
+                        <p class="text-muted mb-4">${errorMessage}</p>
+                        <div class="d-flex gap-2 flex-column flex-sm-row">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i> Cerrar
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="editarMascota(${id})">
+                                <i class="fas fa-refresh me-1"></i> Reintentar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `);
         }
     });
 }
@@ -645,46 +702,170 @@ function descargarExcel(tabla) {
 }
 
 function eliminarMascota(id) {
-    Swal.fire({
-        title: '¿Estás seguro?',
-        text: "Esta acción no se puede revertir",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'modules/eliminar_mascota.php',
-                method: 'POST',
-                data: { id_mascota: id },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire(
-                            '¡Eliminado!',
-                            response.message,
-                            'success'
-                        ).then(() => {
-                            // Recargar la página para actualizar la lista
-                            $('#contenido').load('modules/mascotas.php');
-                        });
-                    } else {
-                        Swal.fire(
-                            'Error',
-                            response.message,
-                            'error'
-                        );
-                    }
+    // Primero obtener información de la mascota
+    $.ajax({
+        url: 'modules/editar_mascota.php',
+        method: 'GET',
+        data: { id: id, info_only: true },
+        dataType: 'json',
+        success: function(mascota) {
+            Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i>¿Eliminar mascota?',
+                html: `
+                    <div class="text-start">
+                        <p class="mb-2">Estás a punto de eliminar la mascota:</p>
+                        <div class="card bg-light border-warning">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="bg-white rounded-circle p-2 text-center" style="width: 45px; height: 45px;">
+                                            <i class="fas ${mascota.especie === 'Felino' ? 'fa-cat' : 'fa-dog'} text-primary" style="font-size: 16px;"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title mb-1">
+                                            <strong>${mascota.nombre}</strong>
+                                        </h6>
+                                        <div class="text-muted small">
+                                            <div><strong>Especie:</strong> ${mascota.especie} - ${mascota.raza}</div>
+                                            <div><strong>Propietario:</strong> ${mascota.propietario}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-warning mt-3 mb-0 d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <small><strong>Advertencia:</strong> Esta acción eliminará toda la información y el historial médico de la mascota. No se puede deshacer.</small>
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
+                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'swal-responsive',
+                    title: 'swal-title-responsive',
+                    htmlContainer: 'swal-html-responsive',
+                    confirmButton: 'swal-btn-responsive',
+                    cancelButton: 'swal-btn-responsive'
                 },
-                error: function() {
-                    Swal.fire(
-                        'Error',
-                        'Ocurrió un error al procesar la solicitud',
-                        'error'
-                    );
+                backdrop: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                allowEnterKey: false,
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown animate__faster'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp animate__faster'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading
+                    Swal.fire({
+                        title: 'Eliminando mascota...',
+                        html: '<div class="d-flex justify-content-center"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Cargando...</span></div></div>',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        customClass: {
+                            popup: 'swal-responsive'
+                        }
+                    });
+                    
+                    $.ajax({
+                        url: 'modules/eliminar_mascota.php',
+                        method: 'POST',
+                        data: { id_mascota: id },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    title: '¡Eliminada!',
+                                    html: `
+                                        <div class="text-center">
+                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                            <p class="mb-0">La mascota ha sido eliminada correctamente.</p>
+                                        </div>
+                                    `,
+                                    icon: 'success',
+                                    confirmButtonColor: '#28a745',
+                                    confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido',
+                                    customClass: {
+                                        popup: 'swal-responsive'
+                                    }
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Error al eliminar',
+                                    html: `
+                                        <div class="text-center">
+                                            <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                                            <p class="mb-0">${response.message || 'No se pudo eliminar la mascota'}</p>
+                                        </div>
+                                    `,
+                                    icon: 'error',
+                                    confirmButtonColor: '#dc3545',
+                                    confirmButtonText: '<i class="fas fa-times me-1"></i> Cerrar',
+                                    customClass: {
+                                        popup: 'swal-responsive'
+                                    }
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                title: 'Error de conexión',
+                                html: `
+                                    <div class="text-center">
+                                        <i class="fas fa-wifi fa-3x text-danger mb-3"></i>
+                                        <p class="mb-0">No se pudo completar la solicitud. Verifica tu conexión.</p>
+                                    </div>
+                                `,
+                                icon: 'error',
+                                confirmButtonColor: '#dc3545',
+                                confirmButtonText: '<i class="fas fa-refresh me-1"></i> Reintentar',
+                                customClass: {
+                                    popup: 'swal-responsive'
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        },
+        error: function() {
+            // Fallback si no se puede obtener info de la mascota
+            Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i>¿Eliminar mascota?',
+                html: `
+                    <div class="text-start">
+                        <p class="mb-2">Estás a punto de eliminar esta mascota.</p>
+                        <div class="alert alert-warning mt-3 mb-0 d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <small><strong>Advertencia:</strong> Esta acción no se puede deshacer.</small>
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
+                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
+                customClass: {
+                    popup: 'swal-responsive'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Continuar con eliminación...
                 }
             });
         }
@@ -997,18 +1178,252 @@ $(document).ready(function() {
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white">
                 <h5 class="modal-title" id="detallesMascotaModalLabel">
-                    <i class="fas fa-paw me-2"></i> Detalles de la Mascota
+                    <i class="fas fa-paw me-2"></i> 
+                    <span class="d-none d-sm-inline">Detalles de la Mascota</span>
+                    <span class="d-inline d-sm-none">Detalles</span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="contenidoModalDetalles">
                 <!-- Aquí se cargará el contenido dinámicamente -->
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <div class="modal-footer flex-column flex-sm-row p-3">
+                <button type="button" class="btn btn-secondary w-100 w-sm-auto" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Cerrar
                 </button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Estilos CSS para mejorar la responsividad -->
+<style>
+/* Estilos para SweetAlert responsivo */
+.swal-responsive {
+    font-size: 14px !important;
+}
+
+@media (max-width: 576px) {
+    .swal-responsive {
+        width: 95% !important;
+        margin: 10px !important;
+        font-size: 13px !important;
+    }
+    
+    .swal-title-responsive {
+        font-size: 18px !important;
+        line-height: 1.3 !important;
+    }
+    
+    .swal-html-responsive {
+        font-size: 13px !important;
+    }
+    
+    .swal-btn-responsive {
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        min-width: 100px !important;
+    }
+}
+
+/* Mejoras para dispositivos táctiles */
+.touch-device .btn-sm.touch-friendly {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 8px 12px;
+}
+
+.touch-device .table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Mejoras para modales en móviles */
+@media (max-width: 767px) {
+    .modal-dialog {
+        margin: 10px;
+        width: calc(100% - 20px);
+    }
+    
+    .modal-fullscreen-sm-down {
+        width: 100vw;
+        max-width: none;
+        height: 100vh;
+        margin: 0;
+    }
+    
+    .modal-fullscreen-sm-down .modal-content {
+        height: 100vh;
+        border: 0;
+        border-radius: 0;
+    }
+    
+    .modal-fullscreen-sm-down .modal-header {
+        border-radius: 0;
+    }
+    
+    .modal-fullscreen-sm-down .modal-body {
+        overflow-y: auto;
+        max-height: calc(100vh - 140px);
+    }
+}
+
+/* Mejoras para la tabla en móviles */
+@media (max-width: 576px) {
+    .table-responsive {
+        border: none;
+    }
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table td {
+        border: none;
+        padding: 0.5rem 0.25rem;
+    }
+    
+    /* Mejorar la vista mobile de mascotas */
+    .d-table-cell.d-sm-none .card {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+    
+    .d-table-cell.d-sm-none .card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+}
+
+/* Mejoras para el scroll horizontal en tablets */
+@media (min-width: 577px) and (max-width: 991px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Ajustes para botones en la tabla */
+@media (max-width: 767px) {
+    .btn-group .btn-sm {
+        margin-bottom: 2px;
+        border-radius: 4px !important;
+    }
+}
+
+/* Mejoras para formularios en móviles */
+@media (max-width: 576px) {
+    .input-group-text {
+        min-width: auto;
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .form-control {
+        font-size: 16px; /* Evita zoom en iOS */
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 14px;
+    }
+    
+    .modal-footer {
+        padding: 1rem;
+    }
+    
+    .modal-footer .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Animaciones suaves */
+.card {
+    transition: all 0.2s ease;
+}
+
+.btn {
+    transition: all 0.2s ease;
+}
+
+.modal.fade .modal-dialog {
+    transition: transform 0.2s ease-out;
+}
+
+/* Mejoras para la accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Loading states */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Focus states para accesibilidad */
+.btn:focus,
+.form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    border-color: #80bdff;
+}
+
+/* Alto contraste para texto importante */
+.fw-bold {
+    font-weight: 600 !important;
+}
+
+/* Mejoras para badges */
+.badge {
+    font-size: 0.7em;
+    padding: 0.35em 0.65em;
+}
+
+@media (max-width: 576px) {
+    .badge {
+        font-size: 0.6em;
+        padding: 0.25em 0.5em;
+    }
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Inicializar tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Ajustar modal según el tamaño de pantalla
+    function adjustModalForScreen() {
+        const isMobile = window.innerWidth < 768;
+        const modalDialogs = document.querySelectorAll('.modal-dialog');
+        
+        modalDialogs.forEach(modal => {
+            if (isMobile) {
+                modal.classList.add('modal-fullscreen-sm-down');
+            } else {
+                modal.classList.remove('modal-fullscreen-sm-down');
+            }
+        });
+    }
+    
+    // Ejecutar al cargar y redimensionar
+    adjustModalForScreen();
+    window.addEventListener('resize', adjustModalForScreen);
+    
+    // Mejorar accesibilidad en dispositivos táctiles
+    if ('ontouchstart' in window) {
+        // Añadir clase para dispositivos táctiles
+        document.body.classList.add('touch-device');
+        
+        // Mejorar interacción con botones pequeños
+        $('.btn-sm').addClass('touch-friendly');
+    }
+});
+</script>

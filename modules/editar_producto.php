@@ -95,55 +95,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <div class="modal-header bg-warning text-dark">
-    <h5 class="modal-title">
-        <i class="fas fa-edit me-2"></i> Editar Producto
+    <h5 class="modal-title d-flex align-items-center">
+        <i class="fas fa-edit me-2"></i> 
+        <span class="d-none d-sm-inline">Editar Producto</span>
+        <span class="d-inline d-sm-none">Editar</span>
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<div class="modal-body">
+<div class="modal-body p-3 p-md-4">
     <form id="formEditarProducto" method="POST">
         <input type="hidden" name="id_producto" value="<?php echo $id_producto; ?>">
         
-        <div class="row">
-            <div class="col-md-12">
+        <!-- Información del Producto -->
+        <div class="row g-3">
+            <div class="col-12">
                 <div class="form-group mb-3">
-                    <label for="nombre_editar" class="form-label">Nombre del Producto <span class="text-danger">*</span></label>
+                    <label for="nombre_editar" class="form-label fw-semibold">
+                        <i class="fas fa-box text-muted me-1"></i>
+                        Nombre del Producto <span class="text-danger">*</span>
+                    </label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-box"></i></span>
+                        <span class="input-group-text d-none d-sm-flex"><i class="fas fa-box"></i></span>
                         <input type="text" class="form-control" id="nombre_editar" name="nombre" 
-                               value="<?php echo htmlspecialchars($producto['nombre']); ?>" required>
+                               value="<?php echo htmlspecialchars($producto['nombre']); ?>" 
+                               placeholder="Nombre del producto" required>
+                    </div>
+                    <div class="form-text text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Ingresa un nombre descriptivo para el producto
                     </div>
                 </div>
             </div>
-            
-            <div class="col-md-6">
+        </div>
+        
+        <!-- Precio y Stock -->
+        <div class="row g-3">
+            <div class="col-12 col-sm-6">
                 <div class="form-group mb-3">
-                    <label for="precio_editar" class="form-label">Precio (S/.) <span class="text-danger">*</span></label>
+                    <label for="precio_editar" class="form-label fw-semibold">
+                        <i class="fas fa-dollar-sign text-success me-1"></i>
+                        Precio (S/.) <span class="text-danger">*</span>
+                    </label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-dollar-sign"></i></span>
+                        <span class="input-group-text bg-light">S/.</span>
                         <input type="number" step="0.01" min="0" class="form-control" id="precio_editar" name="precio" 
-                               value="<?php echo $producto['precio']; ?>" required>
+                               value="<?php echo $producto['precio']; ?>" 
+                               placeholder="0.00" required>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-6">
+            <div class="col-12 col-sm-6">
                 <div class="form-group mb-3">
-                    <label for="stock_editar" class="form-label">Stock <span class="text-danger">*</span></label>
+                    <label for="stock_editar" class="form-label fw-semibold">
+                        <i class="fas fa-warehouse text-primary me-1"></i>
+                        Stock <span class="text-danger">*</span>
+                    </label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-cubes"></i></span>
+                        <span class="input-group-text bg-light d-none d-sm-flex"><i class="fas fa-cubes"></i></span>
                         <input type="number" min="0" step="1" class="form-control" id="stock_editar" name="stock" 
-                               value="<?php echo $producto['stock']; ?>" required>
+                               value="<?php echo $producto['stock']; ?>" 
+                               placeholder="Cantidad" required>
+                        <span class="input-group-text bg-light text-muted small">unid.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Información del Stock Actual -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info d-flex align-items-center mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <div class="flex-grow-1">
+                        <small class="mb-0">
+                            <strong>Stock actual:</strong> <?php echo $producto['stock']; ?> unidades
+                            <?php if ($producto['stock'] <= 10): ?>
+                                <span class="badge bg-warning text-dark ms-2">Stock bajo</span>
+                            <?php elseif ($producto['stock'] == 0): ?>
+                                <span class="badge bg-danger ms-2">Sin stock</span>
+                            <?php else: ?>
+                                <span class="badge bg-success ms-2">Stock disponible</span>
+                            <?php endif; ?>
+                        </small>
                     </div>
                 </div>
             </div>
         </div>
     </form>
 </div>
-<div class="modal-footer">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-    <button type="button" class="btn btn-warning" id="btnGuardarEdicionProducto">
-        <i class="fas fa-save me-1"></i> Guardar Cambios
+<div class="modal-footer flex-column flex-sm-row p-3">
+    <button type="button" class="btn btn-secondary w-100 w-sm-auto mb-2 mb-sm-0 me-sm-2" data-bs-dismiss="modal">
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="button" class="btn btn-warning w-100 w-sm-auto" id="btnGuardarEdicionProducto">
+        <i class="fas fa-save me-1"></i> 
+        <span class="d-none d-sm-inline">Guardar Cambios</span>
+        <span class="d-inline d-sm-none">Guardar</span>
     </button>
 </div>
 

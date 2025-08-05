@@ -1,5 +1,11 @@
 <?php
 include('../includes/config.php');
+include('../includes/pagination.php');
+
+// Inicializar sistema de paginación
+$pagination = new PaginationHelper($conn, 10);
+$buscar = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
+$filtro_fecha = isset($_GET['filtro_fecha']) ? $_GET['filtro_fecha'] : '';
 
 // Manejar solicitudes AJAX
 if (isset($_POST['action'])) {

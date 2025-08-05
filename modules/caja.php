@@ -1,22 +1,69 @@
 <?php
 include('../includes/config.php');
+include('../includes/pagination.php');
 
-// Obtener todas las ventas con información de cliente y mascota
-$sql = "SELECT v.id_venta, v.fecha_venta as fecha, v.subtotal, v.medio_pago,
-               m.nombre as nombre_mascota,
-               CONCAT(c.nombre, ' ', c.apellido) as nombre_cliente,
-               CASE 
-                   WHEN v.tipo_item = 'producto' THEN p.nombre 
-                   WHEN v.tipo_item = 'servicio' THEN s.nombre 
-               END as item_nombre,
-               v.tipo_item, v.cantidad, v.precio_unitario
-        FROM ventas v
-        LEFT JOIN mascotas m ON v.id_mascota = m.id_mascota
-        LEFT JOIN clientes c ON m.id_cliente = c.id_cliente
-        LEFT JOIN productos p ON v.tipo_item = 'producto' AND v.id_item = p.id_producto
-        LEFT JOIN servicios s ON v.tipo_item = 'servicio' AND v.id_item = s.id_servicio
-        ORDER BY v.fecha_venta DESC";
-$result = $conn->query($sql);
+// Inicializar sistema de paginación
+$pagination = new PaginationHelper($conn, 10);
+$buscar = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
+$filtro_fecha = isset($_GET['filtro_fecha']) ? $_GET['filtro_fecha'] : '';
+
+// Obtener ventas con paginación
+$where_conditions = [];
+$params = [];
+
+// Aplicar filtro de fecha si existe
+if (!empty($filtro_fecha)) {
+    switch ($filtro_fecha) {
+        case 'hoy':
+            $where_conditions[] = "DATE(v.fecha_venta) = CURDATE()";
+            break;
+        case 'semana':
+            $where_conditions[] = "v.fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            break;
+        case 'mes':
+            $where_conditions[] = "v.fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            break;
+    }
+}
+
+$where_clause = !empty($where_conditions) ? implode(' AND ', $where_conditions) : '';
+$joins = "LEFT JOIN mascotas m ON v.id_mascota = m.id_mascota 
+          LEFT JOIN clientes c ON m.id_cliente = c.id_cliente
+          LEFT JOIN productos p ON v.tipo_item = 'producto' AND v.id_item = p.id_producto
+          LEFT JOIN servicios s ON v.tipo_item = 'servicio' AND v.id_item = s.id_servicio";
+
+$select = "v.id_venta, v.fecha_venta as fecha, v.subtotal, v.medio_pago,
+           m.nombre as nombre_mascota,
+           CONCAT(c.nombre, ' ', c.apellido) as nombre_cliente,
+           CASE 
+               WHEN v.tipo_item = 'producto' THEN p.nombre 
+               WHEN v.tipo_item = 'servicio' THEN s.nombre 
+           END as item_nombre,
+           v.tipo_item, v.cantidad, v.precio_unitario";
+
+// Si hay búsqueda, usar searchWithPagination
+if (!empty($buscar)) {
+    $search_fields = ['m.nombre', 'c.nombre', 'c.apellido', 'p.nombre', 's.nombre'];
+    $ventasData = $pagination->searchWithPagination(
+        'ventas v', 
+        $search_fields, 
+        $buscar, 
+        $select, 
+        $where_clause, 
+        'v.fecha_venta DESC'
+    );
+} else {
+    $ventasData = $pagination->getPaginatedData(
+        'ventas v', 
+        $select, 
+        $joins, 
+        $where_clause, 
+        'v.fecha_venta DESC'
+    );
+}
+
+$ventas = $ventasData['data'];
+$paginationInfo = $ventasData['pagination'];
 
 // Obtener estadísticas
 $total_ventas = $conn->query("SELECT COUNT(*) as total FROM ventas")->fetch_assoc()['total'];
@@ -89,6 +136,40 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
         </div>
     </div>
 
+    <!-- Búsqueda y Filtros -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-search me-2"></i>Buscar Ventas</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="buscar" 
+                               placeholder="Buscar por cliente, mascota o producto..." 
+                               value="<?php echo htmlspecialchars($buscar); ?>">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="filtro_fecha" class="form-select">
+                        <option value="">Todas las fechas</option>
+                        <option value="hoy" <?php echo $filtro_fecha == 'hoy' ? 'selected' : ''; ?>>Hoy</option>
+                        <option value="semana" <?php echo $filtro_fecha == 'semana' ? 'selected' : ''; ?>>Última semana</option>
+                        <option value="mes" <?php echo $filtro_fecha == 'mes' ? 'selected' : ''; ?>>Último mes</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Tabla de Ventas -->
     <div class="card">
         <div class="card-header bg-white">
@@ -108,8 +189,8 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($result->num_rows > 0): ?>
-                            <?php while ($row = $result->fetch_assoc()): ?>
+                        <?php if (count($ventas) > 0): ?>
+                            <?php foreach ($ventas as $row): ?>
                             <tr>
                                 <td><?php echo date('d/m/Y H:i', strtotime($row['fecha'])); ?></td>
                                 <td>
@@ -139,7 +220,7 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                                     </span>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="6" class="text-center py-4">
@@ -151,31 +232,18 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Paginación -->
+            <?php echo $pagination->generatePaginationHTML($paginationInfo, '#/caja'); ?>
+            
         </div>
     </div>
 </div>
 
-<!-- JS para Caja -->
 <script>
-    $(document).ready(function() {
-        // Funcionalidad adicional para caja
-        // Por ejemplo, filtrado por fecha o exportación a Excel
-        
-        // Ejemplo: Filtrado por fecha
-        $('#filtro_fecha').change(function() {
-            const fecha = $(this).val();
-            // Implementar lógica de filtrado
-        });
-        
-        // Ejemplo: Exportar a Excel
-        $('#btnExportarExcel').click(function() {
-            // Implementar lógica de exportación
-        });
-    });
-    </script>
-</div>
-
-<!-- JS para Caja -->
-<script>
+function limpiarFiltros() {
+    window.location.href = 'index.php#/caja';
+}
+</script>
 // El script ya está incluido arriba
 </script>
