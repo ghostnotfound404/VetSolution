@@ -5,55 +5,84 @@ body {
 
 .navbar {
     z-index: 1030;
+    background: linear-gradient(135deg, #2c3e50, #3498db) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.sidebar {
+.navbar-brand {
+    color: white !important;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.sidebar-fixed {
     position: fixed;
     top: 56px;
     bottom: 0;
     left: 0;
     z-index: 100;
-    padding: 48px 0 0;
+    padding: 20px 0 0;
     box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
     overflow-y: auto;
+    background: linear-gradient(180deg, #34495e, #2c3e50) !important;
 }
 
-.sidebar-sticky {
-    position: sticky;
-    top: 0;
-    height: calc(100vh - 48px);
-    padding-top: .5rem;
-    overflow-x: hidden;
-    overflow-y: auto;
+.sidebar-fixed .nav-link {
+    color: #bdc3c7 !important;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin: 2px 10px;
+    transition: all 0.3s ease;
+}
+
+.sidebar-fixed .nav-link:hover {
+    background-color: rgba(52, 152, 219, 0.2);
+    color: white !important;
+    transform: translateX(5px);
+}
+
+.sidebar-fixed .nav-link.active {
+    background: linear-gradient(135deg, #f39c12, #e67e22) !important;
+    color: white !important;
+    font-weight: bold;
+}
+
+.sidebar-fixed .nav-link i {
+    margin-right: 10px;
+    width: 20px;
 }
 
 /* Ajustes para el contenido principal */
-@media (min-width: 768px) {
-    main {
-        margin-left: 240px;
-    }
+.main-content {
+    margin-left: 0;
+    padding: 20px;
 }
 
-@media (min-width: 992px) {
-    main {
-        margin-left: 200px;
+@media (min-width: 768px) {
+    .main-content {
+        margin-left: 0;
     }
 }
 
 /* Responsive para móviles */
 @media (max-width: 767.98px) {
-    .sidebar {
-        top: 0;
-        position: static;
+    .sidebar-fixed {
+        top: 56px;
+        position: relative;
         height: auto;
+        width: 100%;
     }
     
-    main {
+    .main-content {
         margin-left: 0;
     }
     
     body {
-        padding-top: 0;
+        padding-top: 56px;
+    }
+    
+    .sidebar-fixed .d-none.d-md-inline {
+        display: inline !important;
     }
 }
 

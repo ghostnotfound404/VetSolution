@@ -11,11 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Estilos personalizados -->
     <link href="assets/css/style.css" rel="stylesheet">
-    <link href="assets/css/clientes.css" rel="stylesheet">
-    <link href="assets/css/productos.css" rel="stylesheet">
-    <link href="assets/css/mascotas.css" rel="stylesheet">
-    <link href="assets/css/servicios.css" rel="stylesheet">
-    <link href="assets/css/sidebar-fixed.css" rel="stylesheet">
+
 </head>
 <body>
     <div class="container-fluid">
