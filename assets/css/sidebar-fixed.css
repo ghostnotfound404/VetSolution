@@ -1,34 +1,69 @@
-/* Estilos para barra lateral fija */
-.sidebar-fixed {
+/* Estilos para navegación fija */
+body {
+    padding-top: 56px;
+}
+
+.navbar {
+    z-index: 1030;
+}
+
+.sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 56px;
     bottom: 0;
+    left: 0;
     z-index: 100;
-    padding-top: 0;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
     overflow-y: auto;
 }
 
-/* Ajuste del contenido principal con sidebar fijo */
+.sidebar-sticky {
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 48px);
+    padding-top: .5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Ajustes para el contenido principal */
 @media (min-width: 768px) {
-    .col-md-9.col-lg-10.px-md-4 {
-        margin-left: 25%; /* Ajuste para col-md-3 */
+    main {
+        margin-left: 240px;
     }
 }
 
 @media (min-width: 992px) {
-    .col-md-9.col-lg-10.px-md-4 {
-        margin-left: 16.666667%; /* Ajuste para col-lg-2 */
+    main {
+        margin-left: 200px;
     }
 }
 
-/* Estilos adicionales para móviles */
+/* Responsive para móviles */
 @media (max-width: 767.98px) {
-    .sidebar-fixed {
-        position: relative;
+    .sidebar {
+        top: 0;
+        position: static;
+        height: auto;
     }
     
-    .col-md-9.col-lg-10.px-md-4 {
+    main {
         margin-left: 0;
     }
+    
+    body {
+        padding-top: 0;
+    }
+}
+
+/* Correcciones específicas para evitar duplicación */
+.container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.row {
+    margin-left: 0;
+    margin-right: 0;
 }

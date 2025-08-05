@@ -22,85 +22,149 @@ if ($accion === 'instalar') {
     // Seleccionar la base de datos
     $conn->select_db(DB_NAME);
 
-    // Crear tablas
-    $queries = [
-        "clientes" => "CREATE TABLE IF NOT EXISTS clientes (
-            id_cliente INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(255) NOT NULL,
-            apellido VARCHAR(255) NOT NULL,
-            celular VARCHAR(20) NOT NULL,
-            dni VARCHAR(20) NULL,
-            direccion VARCHAR(255) NULL
-        )",
-
-        "mascotas" => "CREATE TABLE IF NOT EXISTS mascotas (
-            id_mascota INT AUTO_INCREMENT PRIMARY KEY,
-            id_cliente INT NOT NULL,
-            nombre VARCHAR(255) NOT NULL,
-            especie VARCHAR(50) NOT NULL,
-            raza VARCHAR(100) NOT NULL,
-            genero VARCHAR(10) NOT NULL,
-            fecha_nacimiento DATE NOT NULL,
-            estado VARCHAR(10) NOT NULL,
-            FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
-        )",
-
-        "historia_clinica" => "CREATE TABLE IF NOT EXISTS historia_clinica (
-            id_historia INT AUTO_INCREMENT PRIMARY KEY,
-            id_mascota INT NOT NULL,
-            fecha DATE NOT NULL,
-            motivo TEXT,
-            anamnesis TEXT,
-            peso DECIMAL(5,2),
-            temperatura DECIMAL(5,2),
-            diagnostico TEXT,
-            observaciones TEXT,
-            tratamiento TEXT,
-            FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota)
-        )",
-
-        "servicios" => "CREATE TABLE IF NOT EXISTS servicios (
-            id_servicio INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(255) NOT NULL,
-            precio DECIMAL(10,2) NOT NULL,
-            descripcion TEXT
-        )",
-
-        "productos" => "CREATE TABLE IF NOT EXISTS productos (
-            id_producto INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(255) NOT NULL,
-            precio DECIMAL(10,2) NOT NULL,
-            stock INT NOT NULL,
-            descripcion TEXT
-        )",
-
-        "ventas" => "CREATE TABLE IF NOT EXISTS ventas (
-            id_venta INT AUTO_INCREMENT PRIMARY KEY,
-            id_cliente INT NOT NULL,
-            fecha DATETIME NOT NULL,
-            total DECIMAL(10,2) NOT NULL,
-            observaciones TEXT,
-            FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
-        )",
-
-        "hospitalizaciones" => "CREATE TABLE IF NOT EXISTS hospitalizaciones (
-            id_hospitalizacion INT AUTO_INCREMENT PRIMARY KEY,
-            id_mascota INT NOT NULL,
-            hora_inicio DATETIME NOT NULL,
-            hora_termino DATETIME NULL,
-            motivo TEXT,
-            observaciones TEXT,
-            FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota)
-        )"
+    // Definir estructura completa de la base de datos
+    $tables_structure = [
+        "clientes" => [
+            "id_cliente INT AUTO_INCREMENT PRIMARY KEY",
+            "nombre VARCHAR(255) NOT NULL",
+            "apellido VARCHAR(255) NOT NULL", 
+            "celular VARCHAR(20) NOT NULL",
+            "dni VARCHAR(20) NULL",
+            "direccion VARCHAR(255) NULL"
+        ],
+        
+        "mascotas" => [
+            "id_mascota INT AUTO_INCREMENT PRIMARY KEY",
+            "id_cliente INT NOT NULL",
+            "nombre VARCHAR(255) NOT NULL",
+            "especie VARCHAR(50) NOT NULL",
+            "raza VARCHAR(100) NOT NULL",
+            "genero VARCHAR(10) NOT NULL",
+            "fecha_nacimiento DATE NOT NULL",
+            "estado VARCHAR(10) NOT NULL",
+            "esterilizado VARCHAR(10) DEFAULT 'No'",
+            "FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente) ON DELETE CASCADE"
+        ],
+        
+        "historia_clinica" => [
+            "id_historia INT AUTO_INCREMENT PRIMARY KEY",
+            "id_mascota INT NOT NULL",
+            "fecha_atencion DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "motivo_atencion TEXT",
+            "anamnesis TEXT NOT NULL",
+            "descripcion_caso TEXT NOT NULL",
+            "temperatura DECIMAL(4,2) NOT NULL",
+            "peso DECIMAL(6,2) NOT NULL",
+            "frecuencia_cardiaca INT NULL",
+            "tlc_tiempo_llenado VARCHAR(50) NULL",
+            "dth_deshidratacion VARCHAR(50) NULL",
+            "examen_clinico TEXT NOT NULL",
+            "diagnostico TEXT",
+            "observaciones TEXT",
+            "tratamiento TEXT",
+            "FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE"
+        ],
+        
+        "examenes_recomendados" => [
+            "id_examen_recomendado INT AUTO_INCREMENT PRIMARY KEY",
+            "id_historia INT NOT NULL",
+            "descripcion TEXT NOT NULL",
+            "acepta BOOLEAN DEFAULT FALSE",
+            "fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "FOREIGN KEY (id_historia) REFERENCES historia_clinica(id_historia) ON DELETE CASCADE"
+        ],
+        
+        "examenes_laboratorio" => [
+            "id_examen_lab INT AUTO_INCREMENT PRIMARY KEY",
+            "id_mascota INT NOT NULL",
+            "laboratorio VARCHAR(255) NOT NULL",
+            "tipo_analisis VARCHAR(255) NOT NULL",
+            "costo DECIMAL(10,2) NOT NULL",
+            "pagado BOOLEAN DEFAULT FALSE",
+            "fecha_envio DATE NOT NULL",
+            "lectura_realizada BOOLEAN DEFAULT FALSE",
+            "fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE"
+        ],
+        
+        "servicios" => [
+            "id_servicio INT AUTO_INCREMENT PRIMARY KEY",
+            "nombre VARCHAR(255) NOT NULL",
+            "precio DECIMAL(10,2) NOT NULL",
+            "descripcion TEXT"
+        ],
+        
+        "productos" => [
+            "id_producto INT AUTO_INCREMENT PRIMARY KEY",
+            "nombre VARCHAR(255) NOT NULL",
+            "precio DECIMAL(10,2) NOT NULL",
+            "stock INT NOT NULL",
+            "descripcion TEXT"
+        ],
+        
+        "ventas" => [
+            "id_venta INT AUTO_INCREMENT PRIMARY KEY",
+            "id_mascota INT NOT NULL",
+            "tipo_item VARCHAR(20) NOT NULL",
+            "id_item INT NOT NULL",
+            "cantidad INT NOT NULL",
+            "precio_unitario DECIMAL(10,2) NOT NULL",
+            "subtotal DECIMAL(10,2) NOT NULL",
+            "medio_pago VARCHAR(50) NOT NULL",
+            "fecha_venta DATETIME NOT NULL",
+            "FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE"
+        ],
+        
+        "hospitalizaciones" => [
+            "id_hospitalizacion INT AUTO_INCREMENT PRIMARY KEY",
+            "id_mascota INT NOT NULL",
+            "fecha_ingreso DATE NOT NULL",
+            "fecha_salida DATE NULL",
+            "motivo TEXT",
+            "observaciones TEXT",
+            "FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE"
+        ],
+        
+        "egresos" => [
+            "id_egreso INT AUTO_INCREMENT PRIMARY KEY",
+            "descripcion TEXT NOT NULL",
+            "monto DECIMAL(10,2) NOT NULL",
+            "fecha DATE NOT NULL"
+        ],
+        
+        "caja" => [
+            "id_caja INT AUTO_INCREMENT PRIMARY KEY",
+            "tipo VARCHAR(20) NOT NULL",
+            "concepto TEXT NOT NULL",
+            "monto DECIMAL(10,2) NOT NULL",
+            "medio_pago VARCHAR(50) NOT NULL",
+            "fecha DATETIME NOT NULL"
+        ],
+        
+        "citas" => [
+            "id_cita INT AUTO_INCREMENT PRIMARY KEY",
+            "id_cliente INT NOT NULL",
+            "id_mascota INT NOT NULL",
+            "fecha DATE NOT NULL",
+            "hora TIME NOT NULL",
+            "motivo TEXT",
+            "FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente) ON DELETE CASCADE",
+            "FOREIGN KEY (id_mascota) REFERENCES mascotas(id_mascota) ON DELETE CASCADE"
+        ]
     ];
 
-    foreach ($queries as $tabla => $query) {
+    // Crear tablas dinámicamente
+    foreach ($tables_structure as $table_name => $columns) {
+        $columns_sql = implode(",\n            ", $columns);
+        $query = "CREATE TABLE IF NOT EXISTS $table_name (\n            $columns_sql\n        )";
+        
         if ($conn->query($query) === TRUE) {
-            $exitos[] = "✅ Tabla '$tabla' creada correctamente";
+            $exitos[] = "✅ Tabla '$table_name' creada correctamente";
         } else {
-            $errores[] = "❌ Error al crear tabla '$tabla': " . $conn->error;
+            $errores[] = "❌ Error al crear tabla '$table_name': " . $conn->error;
         }
     }
+
     
     if (empty($errores)) {
         $mensaje = "🎉 ¡Instalación completada exitosamente! Todas las tablas han sido creadas.";
@@ -111,15 +175,20 @@ if ($accion === 'instalar') {
     }
     
 } elseif ($accion === 'reparar_autoincrement') {
-    // Proceso de reparación de AUTO_INCREMENT
+    // Configuración dinámica de tablas para reparación AUTO_INCREMENT
     $tables_config = [
         'clientes' => 'id_cliente',
         'mascotas' => 'id_mascota', 
+        'historia_clinica' => 'id_historia',
+        'examenes_recomendados' => 'id_examen_recomendado',
+        'examenes_laboratorio' => 'id_examen_lab',
         'servicios' => 'id_servicio',
         'productos' => 'id_producto',
         'ventas' => 'id_venta',
         'hospitalizaciones' => 'id_hospitalizacion',
-        'historia_clinica' => 'id_historia'
+        'egresos' => 'id_egreso',
+        'caja' => 'id_caja',
+        'citas' => 'id_cita'
     ];
 
     $reparaciones = 0;

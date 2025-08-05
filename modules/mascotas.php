@@ -548,7 +548,37 @@ function editarMascota(id) {
 }
 
 function verHistoria(id) {
-    window.location.href = 'index.php#/historia-clinica?id=' + id;
+    console.log('Viendo historia de mascota ID:', id);
+    
+    // Mostrar loading
+    Swal.fire({
+        title: 'Cargando...',
+        text: 'Obteniendo historia clínica',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    $.ajax({
+        url: 'modules/historia_clinica.php',
+        method: 'GET',
+        data: { id_mascota: id },
+        success: function(response) {
+            Swal.close();
+            $('#contenido').html(response);
+        },
+        error: function() {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al cargar la historia clínica',
+                confirmButtonColor: '#7c4dff'
+            });
+        }
+    });
 }
 
 function verDetalles(id) {

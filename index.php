@@ -53,6 +53,10 @@
                             <i class="fas fa-paw me-2"></i>
                             <span class="d-none d-md-inline">Mascotas</span>
                         </a>
+                        <a class="nav-link" id="examenes" href="#">
+                            <i class="fas fa-vial me-2"></i>
+                            <span class="d-none d-md-inline">Exámenes</span>
+                        </a>
                         <a class="nav-link" id="productos" href="#">
                             <i class="fas fa-box-open me-2"></i>
                             <span class="d-none d-md-inline">Productos</span>
@@ -149,6 +153,18 @@
                     case 'hospitalizaciones':
                         $.ajax({
                             url: 'modules/hospitalizaciones.php',
+                            method: 'GET',
+                            success: function(response) {
+                                contenidoDiv.html(response);
+                            },
+                            error: function() {
+                                contenidoDiv.html('<div class="alert alert-danger">Error al cargar el contenido</div>');
+                            }
+                        });
+                        break;
+                    case 'examenes':
+                        $.ajax({
+                            url: 'modules/examenes.php',
                             method: 'GET',
                             success: function(response) {
                                 contenidoDiv.html(response);

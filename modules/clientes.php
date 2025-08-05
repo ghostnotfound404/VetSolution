@@ -418,7 +418,37 @@ function editarCliente(id) {
 }
 
 function verMascotas(id) {
-    window.location.href = 'index.php#/mascotas?cliente=' + id;
+    console.log('Viendo mascotas del cliente ID:', id);
+    
+    // Mostrar loading
+    Swal.fire({
+        title: 'Cargando...',
+        text: 'Obteniendo mascotas del cliente',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    $.ajax({
+        url: 'modules/mascotas.php',
+        method: 'GET',
+        data: { cliente_id: id },
+        success: function(response) {
+            Swal.close();
+            $('#contenido').html(response);
+        },
+        error: function() {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al cargar las mascotas del cliente',
+                confirmButtonColor: '#7c4dff'
+            });
+        }
+    });
 }
 
 function realizarBusqueda() {
@@ -463,9 +493,10 @@ function eliminarCliente(id) {
         return;
     }
     
+    // Hacer una confirmación simple primero
     Swal.fire({
         title: '¿Estás seguro?',
-        text: "Esta acción no se puede deshacer",
+        text: "Se eliminará el cliente y todas sus mascotas si las tiene",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e53e3e',
@@ -473,9 +504,8 @@ function eliminarCliente(id) {
         confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar'
     }).then((result) => {
-        console.log('Resultado del SweetAlert:', result);
         if (result.isConfirmed) {
-            console.log('Usuario confirmó eliminación, enviando AJAX...');
+            console.log('Usuario confirmó eliminación');
             
             // Mostrar loading
             Swal.fire({
@@ -488,62 +518,65 @@ function eliminarCliente(id) {
                 }
             });
             
+            console.log('Enviando AJAX a:', 'modules/eliminar_cliente.php');
+            console.log('Datos:', { id: id });
+            
             $.ajax({
                 url: 'modules/eliminar_cliente.php',
                 method: 'POST',
                 data: { id: id },
                 dataType: 'json',
-                timeout: 10000, // 10 segundos timeout
+                timeout: 10000,
                 beforeSend: function() {
-                    console.log('Enviando petición AJAX a:', 'modules/eliminar_cliente.php');
-                    console.log('Datos:', { id: id });
+                    console.log('Enviando petición AJAX...');
                 },
                 success: function(response) {
                     console.log('Respuesta AJAX exitosa:', response);
-                    Swal.close(); // Cerrar loading
+                    Swal.close();
                     
                     if (response && response.success) {
+                        let mensaje = response.message || 'Cliente eliminado correctamente';
+                        
+                        if (response.pets_count > 0) {
+                            mensaje += `\n\nSe eliminaron también ${response.pets_count} mascota(s): ${response.deleted_pets.join(', ')}`;
+                        }
+                        
                         Swal.fire({
                             icon: 'success',
                             title: '¡Éxito!',
-                            text: response.message || 'Cliente eliminado correctamente',
+                            text: mensaje,
                             confirmButtonColor: '#7c4dff',
                             confirmButtonText: 'Aceptar'
                         }).then(() => {
-                            // Recargar la lista
-                            location.reload(); // Recargar toda la página por ahora
+                            location.reload();
                         });
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
                             text: response.message || 'Error desconocido',
-                            confirmButtonColor: '#7c4dff',
-                            confirmButtonText: 'OK'
+                            confirmButtonColor: '#7c4dff'
                         });
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error AJAX completo:', {
+                    console.error('Error AJAX:', {
                         xhr: xhr,
                         status: status,
                         error: error,
                         responseText: xhr.responseText
                     });
                     
-                    Swal.close(); // Cerrar loading
+                    Swal.close();
                     
                     Swal.fire({
                         icon: 'error',
                         title: 'Error de conexión',
                         text: 'Error: ' + error + ' - Status: ' + status,
-                        confirmButtonColor: '#7c4dff',
-                        confirmButtonText: 'OK'
+                        confirmButtonColor: '#7c4dff'
                     });
                 }
             });
-        } else {
-            console.log('Usuario canceló la eliminación');
         }
     });
 }
@@ -563,16 +596,25 @@ $(document).ready(function() {
     $('#formNuevoCliente').on('submit', function(e) {
         e.preventDefault();
         
+        // Prevenir múltiples envíos
+        if ($(this).data('submitting')) {
+            return false;
+        }
+        $(this).data('submitting', true);
+        
         // Validar campos obligatorios
         if (!$('#nombre').val().trim()) {
+            $(this).data('submitting', false);
             return;
         }
         
         if (!$('#apellido').val().trim()) {
+            $(this).data('submitting', false);
             return;
         }
         
         if (!$('#celular').val().trim()) {
+            $(this).data('submitting', false);
             return;
         }
         
@@ -592,6 +634,7 @@ $(document).ready(function() {
             contentType: false,
             dataType: 'json',
             success: function(response) {
+                $('#formNuevoCliente').data('submitting', false);
                 if (response.success) {
                     // Cerrar modal
                     $('#nuevoClienteModal').modal('hide');
@@ -614,6 +657,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
+                $('#formNuevoCliente').data('submitting', false);
                 // Solo cerrar el modal y limpiar, sin mostrar mensaje de error
                 $('#nuevoClienteModal').modal('hide');
                 $('#formNuevoCliente')[0].reset();
