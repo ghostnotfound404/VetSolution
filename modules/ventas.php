@@ -19,13 +19,13 @@ if (isset($_POST['action'])) {
                 $termino = trim($_POST['query']);
                 
                 $sql = "SELECT m.id_mascota, m.nombre as nombre_mascota, m.especie,
-                               CONCAT(c.nombre, ' ', c.apellido) as propietario
+                            CONCAT(c.nombre, ' ', c.apellido) as propietario
                         FROM mascotas m 
                         JOIN clientes c ON m.id_cliente = c.id_cliente 
                         WHERE m.nombre LIKE ? 
-                           OR c.nombre LIKE ? 
-                           OR c.apellido LIKE ?
-                           OR CONCAT(c.nombre, ' ', c.apellido) LIKE ?
+                        OR c.nombre LIKE ? 
+                        OR c.apellido LIKE ?
+                        OR CONCAT(c.nombre, ' ', c.apellido) LIKE ?
                         ORDER BY c.nombre, c.apellido, m.nombre
                         LIMIT 10";
                 
@@ -463,7 +463,7 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
                 // Ejecutar búsqueda con delay
                 timeoutMascota = setTimeout(function() {
                     $.ajax({
-                        url: window.location.href,
+                        url: 'modules/ventas.php', // Cambia esto si es necesario
                         method: 'POST',
                         data: { 
                             action: 'buscar_mascotas',
@@ -545,7 +545,7 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
                 // Ejecutar búsqueda con delay
                 timeoutProducto = setTimeout(function() {
                     $.ajax({
-                        url: window.location.href,
+                        url: 'modules/ventas.php', // Cambia esto si es necesario
                         method: 'POST',
                         data: { 
                             action: 'buscar_productos',
@@ -793,7 +793,7 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
             };
 
             $.ajax({
-                url: window.location.href,
+                url: 'modules/ventas.php', // Cambia esto si es necesario
                 method: 'POST',
                 data: formData,
                 dataType: 'json',
