@@ -30,7 +30,8 @@ if ($accion === 'instalar') {
             "apellido VARCHAR(255) NOT NULL", 
             "celular VARCHAR(20) NOT NULL",
             "dni VARCHAR(20) NULL",
-            "direccion VARCHAR(255) NULL"
+            "direccion VARCHAR(255) NULL",
+            "fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP"
         ],
         
         "mascotas" => [

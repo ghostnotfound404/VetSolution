@@ -970,7 +970,7 @@ function seleccionarPropietario(id, nombre) {
 function cargarRazas(especie) {
     const razas = {
         'Canino': ['Labrador', 'Golden Retriever', 'Pastor Alemán', 'Bulldog', 'Beagle', 'Poodle', 'Rottweiler', 'Yorkshire', 'Chihuahua', 'Mestizo'],
-        'Felino': ['Persa', 'Siamés', 'Maine Coon', 'Británico', 'Ragdoll', 'Bengalí', 'Abisinio', 'Mestizo']
+        'Felino': ['Persa', 'Siamés', 'Maine Coon', 'Británico', 'Ragdoll', 'Bengalí', 'Bombay', 'Abisinio', 'Mestizo']
     };
     
     const select = $('#raza');
