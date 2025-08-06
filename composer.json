@@ -1,0 +1,16 @@
+{
+    "name": "diegobastidas/vet-solution",
+    "autoload": {
+        "psr-4": {
+            "Diegobastidas\\VetSolution\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "ghostnotfound and SebasSilvaT"
+        }
+    ],
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
+    }
+}

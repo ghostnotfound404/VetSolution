@@ -1,5 +1,12 @@
 /vendor/
-composer.lock
-composer.json
+
+
+
 .env
-install
+
+install.php
+
+*.log
+.idea/
+.vscode/
+.DS_Store
