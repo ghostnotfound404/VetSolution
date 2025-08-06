@@ -1,11 +1,6 @@
 /vendor/
-
-
-
 .env
-
 install.php
-
 *.log
 .idea/
 .vscode/
