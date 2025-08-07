@@ -209,14 +209,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
-            // Registrar en caja el total general
-            $descripcion_caja = "Venta - Mascota ID: $id_mascota";
-            $insert_caja_sql = "INSERT INTO caja (tipo, monto, descripcion, medio_pago, fecha) VALUES ('ingreso', ?, ?, ?, ?)";
-            $stmt_caja = $conn->prepare($insert_caja_sql);
-            $stmt_caja->bind_param("dsss", $total_general, $descripcion_caja, $medio_pago, $fecha_venta);
-            $stmt_caja->execute();
-            $stmt_caja->close();
-
             $conn->commit();
             echo json_encode(['success' => true, 'message' => 'Venta registrada correctamente']);
             exit();
@@ -521,14 +513,24 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                         <div class="card border-0 shadow-sm mb-3">
                             <div class="card-body p-3">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <strong class="text-primary">#<?= $venta['id_venta'] ?></strong>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-<?= $venta['tipo_item_display'] == 'Producto' ? 'box' : 'stethoscope' ?> text-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?> me-2"></i>
+                                        <strong><?= htmlspecialchars($venta['item_nombre']) ?></strong>
+                                    </div>
                                     <span class="badge bg-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?>">
                                         <?= $venta['tipo_item_display'] ?>
                                     </span>
                                 </div>
-                                <h6 class="mb-1"><?= htmlspecialchars($venta['nombre_mascota']) ?></h6>
-                                <p class="mb-1 text-muted small"><?= htmlspecialchars($venta['propietario']) ?></p>
-                                <p class="mb-1"><strong><?= htmlspecialchars($venta['item_nombre']) ?></strong></p>
+                                <div class="mb-2">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="fas fa-paw text-muted me-2"></i>
+                                        <strong><?= htmlspecialchars($venta['nombre_mascota']) ?></strong>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-user text-muted me-2"></i>
+                                        <small class="text-muted"><?= htmlspecialchars($venta['propietario']) ?></small>
+                                    </div>
+                                </div>
                                 <div class="row g-2 mb-2">
                                     <div class="col-6">
                                         <small class="text-muted">Cantidad:</small><br>
@@ -545,7 +547,8 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                                         <strong class="text-success">S/ <?= number_format($venta['subtotal'], 2) ?></strong>
                                     </div>
                                     <div>
-                                        <span class="badge bg-<?= $venta['medio_pago'] == 'Efectivo' ? 'success' : 'info' ?>">
+                                        <span class="badge bg-<?= $venta['medio_pago'] == 'Efectivo' ? 'success' : ($venta['medio_pago'] == 'Tarjeta' ? 'primary' : ($venta['medio_pago'] == 'Yape' ? 'warning' : 'info')) ?> fs-6">
+                                            <i class="fas fa-<?= $venta['medio_pago'] == 'Efectivo' ? 'money-bill' : ($venta['medio_pago'] == 'Tarjeta' ? 'credit-card' : ($venta['medio_pago'] == 'Yape' ? 'mobile-alt' : 'university')) ?> me-1"></i>
                                             <?= $venta['medio_pago'] ?>
                                         </span>
                                     </div>
@@ -572,52 +575,73 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                 <table class="table table-striped table-hover" id="tabla_ventas">
                     <thead class="table-dark">
                         <tr>
-                            <th>ID</th>
-                            <th>Mascota</th>
-                            <th>Producto/Servicio</th>
-                            <th>Tipo</th>
-                            <th class="text-center">Cantidad</th>
-                            <th class="text-end">Precio Unit.</th>
-                            <th class="text-end">Subtotal</th>
-                            <th>Medio de Pago</th>
-                            <th>Fecha</th>
-                            <th class="text-center">Acciones</th>
+                            <th><i class="fas fa-paw me-1"></i>Mascota / Propietario</th>
+                            <th><i class="fas fa-box me-1"></i>Producto/Servicio</th>
+                            <th><i class="fas fa-tag me-1"></i>Tipo</th>
+                            <th class="text-center"><i class="fas fa-hashtag me-1"></i>Cantidad</th>
+                            <th class="text-end"><i class="fas fa-money-bill me-1"></i>Precio Unit.</th>
+                            <th class="text-end"><i class="fas fa-calculator me-1"></i>Subtotal</th>
+                            <th><i class="fas fa-credit-card me-1"></i>Medio de Pago</th>
+                            <th><i class="fas fa-calendar me-1"></i>Fecha</th>
+                            <th class="text-center"><i class="fas fa-cogs me-1"></i>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($ventas)): ?>
                             <tr>
-                                <td colspan="10" class="text-center text-muted py-4">
+                                <td colspan="9" class="text-center text-muted py-4">
                                     <i class="fas fa-shopping-cart fa-3x mb-3 d-block"></i>
                                     No hay ventas registradas
                                 </td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($ventas as $venta): ?>
-                                <tr>
-                                    <td>#<?= $venta['id_venta'] ?></td>
-                                    <td><?= htmlspecialchars($venta['nombre_mascota']) ?></td>
-                                    <td><?= htmlspecialchars($venta['item_nombre']) ?></td>
+                                <tr class="align-middle">
                                     <td>
-                                        <span class="badge bg-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?>">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2">
+                                                <i class="fas fa-paw text-primary"></i>
+                                            </div>
+                                            <div>
+                                                <strong><?= htmlspecialchars($venta['nombre_mascota']) ?></strong>
+                                                <br><small class="text-muted"><?= htmlspecialchars($venta['propietario']) ?></small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-<?= $venta['tipo_item_display'] == 'Producto' ? 'box' : 'stethoscope' ?> text-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?> me-2"></i>
+                                            <strong><?= htmlspecialchars($venta['item_nombre']) ?></strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?> fs-6">
+                                            <i class="fas fa-<?= $venta['tipo_item_display'] == 'Producto' ? 'box' : 'stethoscope' ?> me-1"></i>
                                             <?= $venta['tipo_item_display'] ?>
                                         </span>
                                     </td>
-                                    <td class="text-center"><?= $venta['cantidad'] ?></td>
-                                    <td class="text-end">S/ <?= number_format($venta['precio_unitario'], 2) ?></td>
-                                    <td class="text-end">S/ <?= number_format($venta['subtotal'], 2) ?></td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info fs-6"><?= $venta['cantidad'] ?></span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold text-muted">S/ <?= number_format($venta['precio_unitario'], 2) ?></span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-success fs-5">S/ <?= number_format($venta['subtotal'], 2) ?></strong>
+                                    </td>
                                     <td>
-                                        <span class="badge bg-<?= $venta['medio_pago'] == 'Efectivo' ? 'success' : 'info' ?>">
+                                        <span class="badge bg-<?= $venta['medio_pago'] == 'Efectivo' ? 'success' : ($venta['medio_pago'] == 'Tarjeta' ? 'primary' : ($venta['medio_pago'] == 'Yape' ? 'warning' : 'info')) ?> fs-6">
+                                            <i class="fas fa-<?= $venta['medio_pago'] == 'Efectivo' ? 'money-bill' : ($venta['medio_pago'] == 'Tarjeta' ? 'credit-card' : ($venta['medio_pago'] == 'Yape' ? 'mobile-alt' : 'university')) ?> me-1"></i>
                                             <?= $venta['medio_pago'] ?>
                                         </span>
                                     </td>
-                                    <td><?= date('d/m/Y H:i', strtotime($venta['fecha_venta'])) ?></td>
+                                    <td class="fw-bold text-primary"><?= date('d/m/Y H:i', strtotime($venta['fecha_venta'])) ?></td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary" onclick="verDetalleVenta(<?= $venta['id_venta'] ?>)" title="Ver detalle">
+                                            <button class="btn btn-outline-primary btn-sm" onclick="verDetalleVenta(<?= $venta['id_venta'] ?>)" title="Ver detalle">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button class="btn btn-outline-info" onclick="imprimirTicket(<?= $venta['id_venta'] ?>)" title="Imprimir ticket">
+                                            <button class="btn btn-outline-info btn-sm" onclick="imprimirTicket(<?= $venta['id_venta'] ?>)" title="Imprimir ticket">
                                                 <i class="fas fa-print"></i>
                                             </button>
                                         </div>
