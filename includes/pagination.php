@@ -201,6 +201,8 @@ function optimizeDatabase($conn) {
         "CREATE INDEX IF NOT EXISTS idx_ventas_mascota ON ventas(id_mascota)",
         "CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta)",
         "CREATE INDEX IF NOT EXISTS idx_ventas_medio_pago ON ventas(medio_pago)",
+        "CREATE INDEX IF NOT EXISTS idx_ventas_tipo_item ON ventas(tipo_item)",
+        "CREATE INDEX IF NOT EXISTS idx_ventas_id_item ON ventas(id_item)",
         
         // Índices para caja
         "CREATE INDEX IF NOT EXISTS idx_caja_fecha ON caja(fecha)",

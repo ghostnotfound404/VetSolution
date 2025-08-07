@@ -237,6 +237,70 @@ $total_mascotas = $conn->query("SELECT COUNT(*) as total FROM mascotas")->fetch_
 $total_productos = $conn->query("SELECT COUNT(*) as total FROM productos WHERE stock > 0")->fetch_assoc()['total'];
 $total_servicios = $conn->query("SELECT COUNT(*) as total FROM servicios")->fetch_assoc()['total'];
 $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fecha_venta) = CURDATE()")->fetch_assoc()['total'];
+
+// Obtener ventas para el listado
+$where_conditions = [];
+$params = [];
+
+// Aplicar filtro de búsqueda si existe
+if (!empty($buscar)) {
+    $where_conditions[] = "(m.nombre LIKE ? OR CONCAT(c.nombre, ' ', c.apellido) LIKE ? OR p.nombre LIKE ? OR s.nombre LIKE ?)";
+    $buscar_param = "%$buscar%";
+    $params = array_fill(0, 4, $buscar_param);
+}
+
+// Aplicar filtro de fecha si existe
+if (!empty($filtro_fecha)) {
+    $where_conditions[] = "DATE(v.fecha_venta) = ?";
+    $params[] = $filtro_fecha;
+}
+
+$where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
+
+// Consulta principal para obtener las ventas
+$ventas_sql = "SELECT v.*, m.nombre as nombre_mascota, 
+               CONCAT(c.nombre, ' ', c.apellido) as propietario,
+               CASE 
+                   WHEN v.tipo_item = 'producto' THEN p.nombre
+                   WHEN v.tipo_item = 'servicio' THEN s.nombre
+                   ELSE 'Item no encontrado'
+               END as item_nombre,
+               CASE 
+                   WHEN v.tipo_item = 'producto' THEN 'Producto'
+                   WHEN v.tipo_item = 'servicio' THEN 'Servicio'
+                   ELSE v.tipo_item
+               END as tipo_item_display
+               FROM ventas v
+               INNER JOIN mascotas m ON v.id_mascota = m.id_mascota
+               INNER JOIN clientes c ON m.id_cliente = c.id_cliente
+               LEFT JOIN productos p ON v.tipo_item = 'producto' AND v.id_item = p.id_producto
+               LEFT JOIN servicios s ON v.tipo_item = 'servicio' AND v.id_item = s.id_servicio
+               $where_clause
+               ORDER BY v.fecha_venta DESC";
+
+if (!empty($params)) {
+    $stmt_ventas = $conn->prepare($ventas_sql);
+    $types = str_repeat('s', count($params));
+    $stmt_ventas->bind_param($types, ...$params);
+    $stmt_ventas->execute();
+    $result_ventas = $stmt_ventas->get_result();
+} else {
+    $result_ventas = $conn->query($ventas_sql);
+}
+
+$ventas = [];
+if ($result_ventas) {
+    while ($row = $result_ventas->fetch_assoc()) {
+        $ventas[] = $row;
+    }
+}
+
+// Obtener el total de ventas para estadísticas
+$total_ventas_sql = "SELECT COUNT(*) as total, COALESCE(SUM(subtotal), 0) as total_monto FROM ventas";
+$total_ventas_result = $conn->query($total_ventas_sql);
+$total_ventas_data = $total_ventas_result->fetch_assoc();
+$total_ventas = $total_ventas_data['total'];
+$total_monto_ventas = $total_ventas_data['total_monto'];
 ?>
 
 <div class="container-fluid px-4">
@@ -409,13 +473,160 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
             <!-- Botones de acción -->
             <div class="row">
                 <div class="col-md-12 text-end">
-                    <button type="button" class="btn btn-outline-secondary me-2" id="btnCancelar">
+                    <button type="button" class="btn btn-outline-secondary me-2" id="btnCancelar" style="display: none;">
                         <i class="fas fa-times me-1"></i> Cancelar
                     </button>
                     <button type="submit" class="btn btn-primary" id="btnRegistrarVenta" disabled>
                         <i class="fas fa-shopping-cart me-1"></i> Registrar Venta
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Todas las Ventas -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-list me-2"></i>Todas las Ventas</h4>
+            <div class="d-flex gap-2 align-items-center">
+                <!-- Filtros -->
+                <div class="input-group" style="width: 300px;">
+                    <input type="text" class="form-control form-control-sm" id="buscar_ventas" placeholder="Buscar ventas..." value="<?= htmlspecialchars($buscar) ?>">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="buscar_btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <input type="date" class="form-control form-control-sm" id="filtro_fecha" value="<?= htmlspecialchars($filtro_fecha) ?>" style="width: 150px;">
+                <button class="btn btn-outline-success btn-sm" id="exportar_excel">
+                    <i class="fas fa-file-excel"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <p class="mb-0">Total de ventas: <strong><?= $total_ventas ?></strong> | Monto total: <strong>S/ <?= number_format($total_monto_ventas, 2) ?></strong></p>
+                </div>
+            </div>
+            
+            <!-- Vista móvil responsive -->
+            <div class="d-md-none">
+                <?php if (empty($ventas)): ?>
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-shopping-cart fa-3x mb-3 d-block"></i>
+                        No hay ventas registradas
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($ventas as $venta): ?>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <strong class="text-primary">#<?= $venta['id_venta'] ?></strong>
+                                    <span class="badge bg-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?>">
+                                        <?= $venta['tipo_item_display'] ?>
+                                    </span>
+                                </div>
+                                <h6 class="mb-1"><?= htmlspecialchars($venta['nombre_mascota']) ?></h6>
+                                <p class="mb-1 text-muted small"><?= htmlspecialchars($venta['propietario']) ?></p>
+                                <p class="mb-1"><strong><?= htmlspecialchars($venta['item_nombre']) ?></strong></p>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <small class="text-muted">Cantidad:</small><br>
+                                        <span class="fw-bold"><?= $venta['cantidad'] ?></span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Precio Unit.:</small><br>
+                                        <span class="fw-bold">S/ <?= number_format($venta['precio_unitario'], 2) ?></span>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted">Total:</small><br>
+                                        <strong class="text-success">S/ <?= number_format($venta['subtotal'], 2) ?></strong>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-<?= $venta['medio_pago'] == 'Efectivo' ? 'success' : 'info' ?>">
+                                            <?= $venta['medio_pago'] ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <small class="text-muted"><?= date('d/m/Y H:i', strtotime($venta['fecha_venta'])) ?></small>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="verDetalleVenta(<?= $venta['id_venta'] ?>)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-info btn-sm" onclick="imprimirTicket(<?= $venta['id_venta'] ?>)">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Vista desktop (tabla) -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-striped table-hover" id="tabla_ventas">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Mascota</th>
+                            <th>Producto/Servicio</th>
+                            <th>Tipo</th>
+                            <th class="text-center">Cantidad</th>
+                            <th class="text-end">Precio Unit.</th>
+                            <th class="text-end">Subtotal</th>
+                            <th>Medio de Pago</th>
+                            <th>Fecha</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($ventas)): ?>
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    <i class="fas fa-shopping-cart fa-3x mb-3 d-block"></i>
+                                    No hay ventas registradas
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($ventas as $venta): ?>
+                                <tr>
+                                    <td>#<?= $venta['id_venta'] ?></td>
+                                    <td><?= htmlspecialchars($venta['nombre_mascota']) ?></td>
+                                    <td><?= htmlspecialchars($venta['item_nombre']) ?></td>
+                                    <td>
+                                        <span class="badge bg-<?= $venta['tipo_item_display'] == 'Producto' ? 'primary' : 'info' ?>">
+                                            <?= $venta['tipo_item_display'] ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-center"><?= $venta['cantidad'] ?></td>
+                                    <td class="text-end">S/ <?= number_format($venta['precio_unitario'], 2) ?></td>
+                                    <td class="text-end">S/ <?= number_format($venta['subtotal'], 2) ?></td>
+                                    <td>
+                                        <span class="badge bg-<?= $venta['medio_pago'] == 'Efectivo' ? 'success' : 'info' ?>">
+                                            <?= $venta['medio_pago'] ?>
+                                        </span>
+                                    </td>
+                                    <td><?= date('d/m/Y H:i', strtotime($venta['fecha_venta'])) ?></td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="verDetalleVenta(<?= $venta['id_venta'] ?>)" title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" onclick="imprimirTicket(<?= $venta['id_venta'] ?>)" title="Imprimir ticket">
+                                                <i class="fas fa-print"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -436,6 +647,7 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
             tipoSeleccionado = $(this).text();
             $('#btnClinica, #btnFarmacia, #btnPetshop').removeClass('btn-primary').addClass('btn-success');
             $(this).removeClass('btn-success').addClass('btn-primary');
+            validarFormulario();
         });
 
         // Seleccionar medio de pago
@@ -573,7 +785,7 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
                                              <div class="d-flex justify-content-between align-items-center">
                                                  <div>
                                                      <strong>${item.nombre}</strong><br>
-                                                     <small class="text-muted">Precio: $${parseFloat(item.precio).toFixed(2)}</small>
+                                                     <small class="text-muted">Precio: S/${parseFloat(item.precio).toFixed(2)}</small>
                                                  </div>
                                                  ${stockBadge}
                                              </div>
@@ -613,6 +825,18 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
 
         // Añadir item al carrito
         $('#btnAgregarItem').click(function() {
+            // Validar que se haya seleccionado tipo
+            if (!tipoSeleccionado) {
+                Swal.fire('Error', 'Debe seleccionar un tipo (Clínica, Farmacia o Petshop) primero', 'error');
+                return;
+            }
+            
+            // Validar que se haya seleccionado medio de pago
+            if (!medioPagoSeleccionado) {
+                Swal.fire('Error', 'Debe seleccionar un medio de pago primero', 'error');
+                return;
+            }
+            
             if (!productoTemp) {
                 Swal.fire('Error', 'Debe seleccionar un producto o servicio primero', 'error');
                 return;
@@ -739,6 +963,8 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
             
             if (carritoItems.length === 0) {
                 tbody.html('<tr id="carrito_vacio"><td colspan="6" class="text-center text-muted py-4">No hay productos en el carrito</td></tr>');
+                // Ocultar botón cancelar cuando no hay items con animación
+                $('#btnCancelar').fadeOut(300);
             } else {
                 let html = '';
                 carritoItems.forEach((item, index) => {
@@ -748,8 +974,8 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
                             <td>${item.nombre}</td>
                             <td><span class="badge bg-${item.tipo === 'producto' ? 'primary' : 'success'}">${item.tipo}</span></td>
                             <td>${item.cantidad}</td>
-                            <td>$${item.precio.toFixed(2)}</td>
-                            <td>$${subtotal.toFixed(2)}</td>
+                            <td>S/ ${item.precio.toFixed(2)}</td>
+                            <td>S/ ${subtotal.toFixed(2)}</td>
                             <td>
                                 <button class="btn btn-warning btn-sm me-1 editar_venta" data-index="${index}" title="Editar">
                                     <i class="fas fa-edit"></i>
@@ -765,6 +991,8 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
                     `;
                 });
                 tbody.html(html);
+                // Mostrar botón cancelar cuando hay items con animación
+                $('#btnCancelar').fadeIn(300);
             }
         }
 
@@ -773,8 +1001,9 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
             const mascotaId = $('#id_mascota').val();
             const medioPago = $('#medio_pago').val();
             const tieneItems = carritoItems.length > 0;
+            const tipoValido = tipoSeleccionado !== '';
             
-            const esValido = mascotaId && medioPago && tieneItems;
+            const esValido = mascotaId && medioPago && tieneItems && tipoValido;
             $('#btnRegistrarVenta').prop('disabled', !esValido);
         }
 
@@ -826,13 +1055,105 @@ $ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fech
                     cancelButtonText: 'No'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        location.reload();
+                        // Limpiar carrito y resetear formulario
+                        carritoItems = [];
+                        actualizarTablaCarrito();
+                        validarFormulario();
+                        
+                        // Limpiar campos del formulario
+                        $('#buscar_mascota').val('');
+                        $('#buscar_producto').val('');
+                        $('#cantidad_item').val('1');
+                        $('#id_mascota').val('');
+                        $('#info_mascota').hide();
+                        $('#resultados_mascotas').hide();
+                        $('#resultados_productos').hide();
+                        productoTemp = null;
+                        
+                        // Resetear selecciones de tipo y medio de pago
+                        tipoSeleccionado = '';
+                        medioPagoSeleccionado = '';
+                        $('#medio_pago').val('');
+                        $('#btnClinica, #btnFarmacia, #btnPetshop').removeClass('btn-primary').addClass('btn-success');
+                        $('[data-pago]').removeClass('btn-primary').addClass('btn-success');
+                        
+                        Swal.fire('Cancelado', 'Se ha limpiado el formulario', 'success');
                     }
                 });
             } else {
-                location.reload();
+                // Si no hay items, simplemente ocultar el botón con animación
+                $('#btnCancelar').fadeOut(300);
             }
         });
+
+        // Funciones para el listado de ventas
+        $('#buscar_btn').click(function() {
+            const buscar = $('#buscar_ventas').val();
+            const fecha = $('#filtro_fecha').val();
+            let url = 'index.php?module=ventas';
+            
+            if (buscar || fecha) {
+                url += '&';
+                if (buscar) url += 'buscar=' + encodeURIComponent(buscar);
+                if (buscar && fecha) url += '&';
+                if (fecha) url += 'filtro_fecha=' + fecha;
+            }
+            
+            window.location.href = url;
+        });
+
+        $('#buscar_ventas').keypress(function(e) {
+            if (e.which == 13) {
+                $('#buscar_btn').click();
+            }
+        });
+
+        $('#filtro_fecha').change(function() {
+            $('#buscar_btn').click();
+        });
+
+        $('#exportar_excel').click(function() {
+            window.location.href = 'modules/exportar_excel.php?tipo=ventas';
+        });
+
+        // Funciones para acciones de ventas
+        window.verDetalleVenta = function(id) {
+            Swal.fire({
+                title: 'Detalle de Venta #' + id,
+                html: 'Cargando información...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Aquí podrías hacer una llamada AJAX para obtener más detalles
+            setTimeout(() => {
+                Swal.update({
+                    title: 'Detalle de Venta #' + id,
+                    html: '<p>Información detallada de la venta.</p>',
+                    showCloseButton: true,
+                    showConfirmButton: false
+                });
+                Swal.hideLoading();
+            }, 1000);
+        };
+
+        window.imprimirTicket = function(id) {
+            Swal.fire({
+                title: '¿Imprimir Ticket?',
+                text: 'Se imprimirá el ticket de la venta #' + id,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-print"></i> Imprimir',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Aquí podrías abrir una ventana de impresión
+                    window.open('modules/imprimir_ticket.php?id=' + id, '_blank', 'width=300,height=600');
+                }
+            });
+        };
     });
 </script>
     </div>
