@@ -218,10 +218,10 @@ if (isset($_GET['id'])) {
         </form>
         
         <div class="modal-footer flex-column flex-sm-row p-3">
-            <button type="button" class="btn btn-secondary w-100 w-sm-auto mb-2 mb-sm-0 me-sm-2" data-bs-dismiss="modal">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                 <i class="fas fa-times me-1"></i> Cancelar
             </button>
-            <button type="submit" form="formEditarExamen" class="btn btn-warning w-100 w-sm-auto">
+            <button type="submit" form="formEditarExamen" class="btn btn-warning">
                 <i class="fas fa-save me-1"></i> 
                 <span class="d-none d-sm-inline">Actualizar Examen</span>
                 <span class="d-inline d-sm-none">Actualizar</span>
