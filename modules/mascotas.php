@@ -67,9 +67,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Aplicar filtros si existe el parámetro filtro
 $where_clause = "";
-// Obtener mascotas con paginación
+// Obtener parámetros de búsqueda y filtro
+$buscar = isset($_GET['buscar_mascota']) ? trim($_GET['buscar_mascota']) : '';
 $filtro = isset($_GET['filtro']) ? $_GET['filtro'] : '';
+$cliente_id = isset($_GET['cliente_id']) ? intval($_GET['cliente_id']) : 0;
 $where_conditions = [];
+
+// Filtro por cliente específico (cuando viene desde clientes)
+if ($cliente_id > 0) {
+    $where_conditions[] = "m.id_cliente = $cliente_id";
+}
 
 // Aplicar filtros
 switch ($filtro) {
@@ -123,13 +130,46 @@ $stats_sql = "SELECT
                 SUM(CASE WHEN especie = 'Felino' THEN 1 ELSE 0 END) as felinos,
                 SUM(CASE WHEN esterilizado = 'Si' THEN 1 ELSE 0 END) as esterilizados
               FROM mascotas";
+
+// Si hay filtro por cliente, modificar las estadísticas
+if ($cliente_id > 0) {
+    $stats_sql .= " WHERE id_cliente = $cliente_id";
+}
+
 $stats = $conn->query($stats_sql)->fetch_assoc();
+
+// Obtener información del cliente si está filtrado
+$cliente_info = null;
+if ($cliente_id > 0) {
+    $cliente_sql = "SELECT nombre, apellido FROM clientes WHERE id_cliente = ?";
+    $stmt = $conn->prepare($cliente_sql);
+    $stmt->bind_param("i", $cliente_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $cliente_info = $result->fetch_assoc();
+    }
+    $stmt->close();
+}
 ?>
 
 <div class="container-fluid px-4 mascotas">
     <!-- Encabezado con estadísticas -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0"><i class="fas fa-paw me-2"></i>Gestión de Mascotas</h2>
+        <?php if ($cliente_info): ?>
+            <div>
+                <h2 class="mb-0">
+                    <i class="fas fa-paw me-2"></i>Mascotas de <?php echo htmlspecialchars($cliente_info['nombre'] . ' ' . $cliente_info['apellido']); ?>
+                </h2>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="volverAClientes()">
+                        <i class="fas fa-arrow-left me-1"></i> Volver a Clientes
+                    </button>
+                </div>
+            </div>
+        <?php else: ?>
+            <h2 class="mb-0"><i class="fas fa-paw me-2"></i>Gestión de Mascotas</h2>
+        <?php endif; ?>
     </div>
 
     <!-- Tarjetas de Resumen -->
@@ -420,6 +460,13 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                         <i class="fas fa-search fa-4x text-muted mb-3"></i>
                         <h4>No se encontraron resultados</h4>
                         <p class="text-muted">No hay mascotas que coincidan con tu búsqueda</p>
+                    <?php elseif ($cliente_id > 0): ?>
+                        <i class="fas fa-paw fa-4x text-muted mb-3"></i>
+                        <h4>Este cliente no tiene mascotas registradas</h4>
+                        <p class="text-muted">Puedes registrar una nueva mascota para este cliente</p>
+                        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#nuevaMascotaModal" onclick="preseleccionarCliente(<?php echo $cliente_id; ?>)">
+                            <i class="fas fa-plus-circle me-1"></i> Registrar Primera Mascota
+                        </button>
                     <?php else: ?>
                         <i class="fas fa-paw fa-4x text-muted mb-3"></i>
                         <h4>No hay mascotas registradas</h4>
@@ -1426,4 +1473,26 @@ $(document).ready(function() {
         $('.btn-sm').addClass('touch-friendly');
     }
 });
+
+// Función para volver a la lista de clientes
+function volverAClientes() {
+    $.ajax({
+        url: 'modules/clientes.php',
+        method: 'GET',
+        success: function(response) {
+            $('#contenido').html(response);
+        },
+        error: function() {
+            console.error('Error al cargar clientes');
+        }
+    });
+}
+
+// Función para preseleccionar cliente en el modal
+function preseleccionarCliente(clienteId) {
+    // Preseleccionar el cliente en el formulario
+    $('#id_cliente').val(clienteId);
+    $('#buscar_propietario').val('Cliente seleccionado');
+    $('#buscar_propietario').prop('disabled', true);
+}
 </script>

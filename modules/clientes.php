@@ -700,6 +700,118 @@ function eliminarCliente(id) {
                         dataType: 'json',
                         success: function(response) {
                             if (response.success) {
+                                let mensaje = response.message || 'Cliente eliminado correctamente';
+                                
+                                if (response.pets_count > 0) {
+                                    mensaje += `\n\nSe eliminaron también ${response.pets_count} mascota(s): ${response.deleted_pets.join(', ')}`;
+                                }
+                                
+                                Swal.fire({
+                                    title: '¡Eliminado!',
+                                    html: `
+                                        <div class="text-center">
+                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                            <p class="mb-0">El cliente ha sido eliminado correctamente.</p>
+                                        </div>
+                                    `,
+                                    icon: 'success',
+                                    confirmButtonColor: '#28a745',
+                                    confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido',
+                                    customClass: {
+                                        popup: 'swal-responsive'
+                                    }
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Error al eliminar',
+                                    html: `
+                                        <div class="text-center">
+                                            <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                                            <p class="mb-0">${response.message || 'No se pudo eliminar el cliente'}</p>
+                                        </div>
+                                    `,
+                                    icon: 'error',
+                                    confirmButtonColor: '#dc3545',
+                                    confirmButtonText: '<i class="fas fa-times me-1"></i> Cerrar',
+                                    customClass: {
+                                        popup: 'swal-responsive'
+                                    }
+                                });
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error AJAX:', {
+                                xhr: xhr,
+                                status: status,
+                                error: error,
+                                responseText: xhr.responseText
+                            });
+                            
+                            Swal.fire({
+                                title: 'Error de conexión',
+                                html: `
+                                    <div class="text-center">
+                                        <i class="fas fa-wifi fa-3x text-danger mb-3"></i>
+                                        <p class="mb-0">No se pudo completar la solicitud. Verifica tu conexión.</p>
+                                    </div>
+                                `,
+                                icon: 'error',
+                                confirmButtonColor: '#dc3545',
+                                confirmButtonText: '<i class="fas fa-refresh me-1"></i> Reintentar',
+                                customClass: {
+                                    popup: 'swal-responsive'
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        },
+        error: function() {
+            // Fallback si no se puede obtener info del cliente
+            Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i>¿Eliminar cliente?',
+                html: `
+                    <div class="text-start">
+                        <p class="mb-2">Estás a punto de eliminar este cliente.</p>
+                        <div class="alert alert-warning mt-3 mb-0 d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <small><strong>Advertencia:</strong> Esta acción no se puede deshacer.</small>
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
+                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
+                customClass: {
+                    popup: 'swal-responsive'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading
+                    Swal.fire({
+                        title: 'Eliminando cliente...',
+                        html: '<div class="d-flex justify-content-center"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Cargando...</span></div></div>',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        customClass: {
+                            popup: 'swal-responsive'
+                        }
+                    });
+                    
+                    $.ajax({
+                        url: 'modules/eliminar_cliente.php',
+                        method: 'POST',
+                        data: { id: id },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
                                 Swal.fire({
                                     title: '¡Eliminado!',
                                     html: `
@@ -752,79 +864,6 @@ function eliminarCliente(id) {
                                 }
                             });
                         }
-                    });
-                }
-            });
-        },
-        error: function() {
-            // Fallback si no se puede obtener info del cliente
-            Swal.fire({
-                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i>¿Eliminar cliente?',
-                html: `
-                    <div class="text-start">
-                        <p class="mb-2">Estás a punto de eliminar este cliente.</p>
-                        <div class="alert alert-warning mt-3 mb-0 d-flex align-items-center">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <small><strong>Advertencia:</strong> Esta acción no se puede deshacer.</small>
-                        </div>
-                    </div>
-                `,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
-                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
-                customClass: {
-                    popup: 'swal-responsive'
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Continuar con eliminación...
-                }
-            });
-        }
-    });
-}
-                        let mensaje = response.message || 'Cliente eliminado correctamente';
-                        
-                        if (response.pets_count > 0) {
-                            mensaje += `\n\nSe eliminaron también ${response.pets_count} mascota(s): ${response.deleted_pets.join(', ')}`;
-                        }
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: mensaje,
-                            confirmButtonColor: '#7c4dff',
-                            confirmButtonText: 'Aceptar'
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: response.message || 'Error desconocido',
-                            confirmButtonColor: '#7c4dff'
-                        });
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error AJAX:', {
-                        xhr: xhr,
-                        status: status,
-                        error: error,
-                        responseText: xhr.responseText
-                    });
-                    
-                    Swal.close();
-                    
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de conexión',
-                        text: 'Error: ' + error + ' - Status: ' + status,
-                        confirmButtonColor: '#7c4dff'
                     });
                 }
             });

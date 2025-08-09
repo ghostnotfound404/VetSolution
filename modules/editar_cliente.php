@@ -1,7 +1,7 @@
 <?php
 include('../includes/config.php');
 
-// Si es una petición GET, mostrar el formulario de edición
+// Si es una petición GET, mostrar el formulario de edición o información del cliente
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     $id_cliente = intval($_GET['id']);
     
@@ -19,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     
     $cliente = $result->fetch_assoc();
     $stmt->close();
+    
+    // Si solo se solicita información del cliente (para confirmación de eliminación)
+    if (isset($_GET['info_only']) && $_GET['info_only'] == 'true') {
+        header('Content-Type: application/json');
+        echo json_encode($cliente);
+        exit();
+    }
 ?>
 
 <div class="modal-header bg-warning text-white">
