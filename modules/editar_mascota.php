@@ -109,18 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <!-- Formulario de edición de mascota -->
-<div class="modal-header bg-primary text-white">
-    <h5 class="modal-title d-flex align-items-center">
-        <i class="fas fa-edit me-2"></i> 
-        <span class="d-none d-sm-inline">Editar Mascota</span>
-        <span class="d-inline d-sm-none">Editar</span>
-    </h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-</div>
-<div class="modal-body p-3 p-md-4">
-    <form id="formEditarMascota" method="POST">
-        <input type="hidden" name="id_mascota" value="<?php echo $id_mascota; ?>">
-        
+<form id="formEditarMascota" method="POST">
+    <input type="hidden" name="id_mascota" value="<?php echo $id_mascota; ?>">
         <!-- Datos del Propietario -->
         <div class="row mb-4">
             <div class="col-12">
@@ -255,32 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
         </div>
-        
-        <!-- Información adicional -->
-        <div class="row">
-            <div class="col-12">
-                <div class="alert alert-light border d-flex align-items-center mb-0">
-                    <i class="fas fa-lightbulb text-warning me-2"></i>
-                    <div class="flex-grow-1">
-                        <small class="mb-0 text-muted">
-                            <strong>Tip:</strong> Verifica que todos los datos estén correctos antes de guardar los cambios.
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
-</div>
-<div class="modal-footer flex-column flex-sm-row p-3">
-    <button type="button" class="btn btn-secondary w-100 w-sm-auto mb-2 mb-sm-0 me-sm-2" data-bs-dismiss="modal">
-        <i class="fas fa-times me-1"></i> Cancelar
-    </button>
-    <button type="submit" form="formEditarMascota" class="btn btn-primary w-100 w-sm-auto">
-        <i class="fas fa-save me-1"></i> 
-        <span class="d-none d-sm-inline">Guardar Cambios</span>
-        <span class="d-inline d-sm-none">Guardar</span>
-    </button>
-</div>
+</form>
 
 <script>
 $(document).ready(function() {

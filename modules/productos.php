@@ -485,7 +485,7 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                 <button type="button" class="btn btn-secondary w-100 w-sm-auto mb-2 mb-sm-0 me-sm-2" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Cancelar
                 </button>
-                <button type="submit" form="formNuevoProducto" class="btn btn-primary w-100 w-sm-auto">
+                <button type="submit" form="formNuevoProducto" class="btn btn-success w-100 w-sm-auto">
                     <i class="fas fa-save me-1"></i> 
                     <span class="d-none d-sm-inline">Guardar Producto</span>
                     <span class="d-inline d-sm-none">Guardar</span>

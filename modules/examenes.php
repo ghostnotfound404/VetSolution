@@ -384,7 +384,7 @@ if (isset($_GET['buscar_termino']) && !empty(trim($_GET['buscar_termino']))) {
 <div class="modal fade" id="nuevoExamenModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title d-flex align-items-center">
                     <i class="fas fa-vial me-2"></i>
                     <span class="d-none d-sm-inline">Registrar Nuevo Examen</span>
