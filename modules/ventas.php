@@ -573,7 +573,6 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
             <!-- Vista desktop (tabla) -->
             <div class="table-responsive d-none d-md-block">
                 <table class="table table-striped table-hover" id="tabla_ventas">
-                    <thead class="table-dark">
                         <tr>
                             <th><i class="fas fa-paw me-1"></i>Mascota / Propietario</th>
                             <th><i class="fas fa-box me-1"></i>Producto/Servicio</th>
@@ -585,7 +584,6 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                             <th><i class="fas fa-calendar me-1"></i>Fecha</th>
                             <th class="text-center"><i class="fas fa-cogs me-1"></i>Acciones</th>
                         </tr>
-                    </thead>
                     <tbody>
                         <?php if (empty($ventas)): ?>
                             <tr>

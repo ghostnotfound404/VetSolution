@@ -192,7 +192,7 @@ $paginationInfo = $serviciosData['pagination'];
                         <i class="fas fa-concierge-bell fa-4x text-muted mb-3"></i>
                         <h4>No hay servicios registrados</h4>
                         <p class="text-muted">Comienza agregando nuevos servicios haciendo clic en el botón "Nuevo Servicio"</p>
-                        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
+                        <button type="button" class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#nuevoServicioModal">
                             <i class="fas fa-plus-circle me-1"></i> Agregar Servicio
                         </button>
                     <?php endif; ?>

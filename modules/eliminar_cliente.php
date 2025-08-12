@@ -60,6 +60,7 @@ try {
 
     error_log("Conexión a DB establecida");
 
+    // Iniciamos una única transacción
     $conn->begin_transaction();
 
     // Verificar si el cliente existe
@@ -102,26 +103,102 @@ try {
     }
     $stmt_mascotas->close();
 
+    // Verificar si el cliente tiene mascotas y bloquear eliminación
+    if (!empty($nombres_mascotas)) {
+        http_response_code(400);
+        
+        // Crear un mensaje informativo con los nombres de las mascotas
+        $mascotasLista = implode(", ", $nombres_mascotas);
+        
+        echo json_encode([
+            'success' => false,
+            'message' => 'Este cliente tiene mascotas registradas (' . $mascotasLista . '). Debe eliminar primero las mascotas antes de eliminar al cliente.',
+            'has_pets' => true,
+            'pet_names' => $nombres_mascotas
+        ]);
+        exit();
+    }
+
     error_log("Procediendo con eliminación real");
-
-    // Si llegamos aquí, procedemos con la eliminación real
-    $conn->begin_transaction();
-
-    // Verificar dependencias (solo citas, ya no importan las mascotas)
-    $sql_deps = "SELECT COUNT(*) FROM citas WHERE id_cliente = ? AND fecha >= CURDATE()";
-    $stmt_deps = $conn->prepare($sql_deps);
-    if (!$stmt_deps) {
-        throw new Exception('Error al preparar consulta de dependencias: ' . $conn->error);
+    
+    // Verificar posibles tablas con relaciones que no hemos considerado
+    $posibles_tablas_relacionadas = ["ventas", "historia_clinica", "hospitalizaciones", "citas"];
+    $tablas_con_registros = [];
+    
+    foreach ($posibles_tablas_relacionadas as $tabla) {
+        try {
+            // Verificar si la tabla existe
+            $tabla_existe = $conn->query("SHOW TABLES LIKE '$tabla'")->num_rows > 0;
+            
+            if ($tabla_existe) {
+                // Verificar si hay registros relacionados con este cliente
+                $check_sql = "SELECT COUNT(*) as total FROM $tabla WHERE id_cliente = ?";
+                $check_stmt = $conn->prepare($check_sql);
+                if ($check_stmt) {
+                    $check_stmt->bind_param("i", $id_cliente);
+                    $check_stmt->execute();
+                    $result = $check_stmt->get_result();
+                    $row = $result->fetch_assoc();
+                    
+                    if ($row['total'] > 0) {
+                        $tablas_con_registros[] = "$tabla ({$row['total']} registros)";
+                    }
+                    
+                    $check_stmt->close();
+                }
+            }
+        } catch (Exception $ex) {
+            error_log("Error al verificar relaciones en tabla $tabla: " . $ex->getMessage());
+        }
     }
-    $stmt_deps->bind_param("i", $id_cliente);
-    if (!$stmt_deps->execute()) {
-        throw new Exception('Error al ejecutar consulta de dependencias: ' . $stmt_deps->error);
+    
+    // Si hay tablas relacionadas, informar y detener la eliminación
+    if (!empty($tablas_con_registros)) {
+        $mensaje = "No se puede eliminar el cliente porque tiene registros en: " . implode(", ", $tablas_con_registros);
+        error_log($mensaje);
+        
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => $mensaje,
+            'has_dependencies' => true,
+            'dependencies' => $tablas_con_registros
+        ]);
+        exit();
     }
 
-    $stmt_deps->bind_result($count_citas);
-    $stmt_deps->fetch();
-    $stmt_deps->close();
-
+    // Verificar si la tabla citas existe antes de consultar
+    $tableExists = false;
+    $checkTable = $conn->query("SHOW TABLES LIKE 'citas'");
+    if ($checkTable && $checkTable->num_rows > 0) {
+        $tableExists = true;
+    }
+    
+    // Solo verificar dependencias si la tabla existe
+    $count_citas = 0;
+    if ($tableExists) {
+        // Verificar dependencias (citas)
+        try {
+            $sql_deps = "SELECT COUNT(*) FROM citas WHERE id_cliente = ? AND fecha >= CURDATE()";
+            $stmt_deps = $conn->prepare($sql_deps);
+            if (!$stmt_deps) {
+                error_log("Error al preparar consulta de dependencias: " . $conn->error);
+            } else {
+                $stmt_deps->bind_param("i", $id_cliente);
+                if (!$stmt_deps->execute()) {
+                    error_log("Error al ejecutar consulta de dependencias: " . $stmt_deps->error);
+                } else {
+                    $stmt_deps->bind_result($count_citas);
+                    $stmt_deps->fetch();
+                    $stmt_deps->close();
+                }
+            }
+        } catch (Exception $ex) {
+            error_log("Error al verificar citas: " . $ex->getMessage());
+            // Continuamos con la eliminación si hay error en esta parte
+        }
+    }
+    
     if ($count_citas > 0) {
         http_response_code(400);
         echo json_encode([
@@ -132,36 +209,42 @@ try {
         exit();
     }
 
-    // Eliminar mascotas del cliente primero (si las tiene)
-    $count_mascotas = count($nombres_mascotas);
-    if ($count_mascotas > 0) {
-        $sql_delete_mascotas = "DELETE FROM mascotas WHERE id_cliente = ?";
-        $stmt_delete_mascotas = $conn->prepare($sql_delete_mascotas);
-        if (!$stmt_delete_mascotas) {
-            throw new Exception('Error al preparar consulta de eliminación de mascotas: ' . $conn->error);
-        }
-        $stmt_delete_mascotas->bind_param("i", $id_cliente);
-        if (!$stmt_delete_mascotas->execute()) {
-            throw new Exception('Error al ejecutar eliminación de mascotas: ' . $stmt_delete_mascotas->error);
-        }
-        $stmt_delete_mascotas->close();
-    }
-
+    // Ya validamos que no tenga mascotas, así que podemos proceder directamente con la eliminación del cliente
+    
     // Eliminar cliente
-    $sql_delete = "DELETE FROM clientes WHERE id_cliente = ? LIMIT 1";
-    $stmt_delete = $conn->prepare($sql_delete);
-    if (!$stmt_delete) {
-        throw new Exception('Error al preparar consulta de eliminación: ' . $conn->error);
-    }
-    $stmt_delete->bind_param("i", $id_cliente);
-    if (!$stmt_delete->execute()) {
-        throw new Exception('Error al ejecutar eliminación: ' . $stmt_delete->error);
-    }
+    try {
+        $sql_delete = "DELETE FROM clientes WHERE id_cliente = ? LIMIT 1";
+        $stmt_delete = $conn->prepare($sql_delete);
+        if (!$stmt_delete) {
+            throw new Exception('Error al preparar consulta de eliminación: ' . $conn->error);
+        }
+        $stmt_delete->bind_param("i", $id_cliente);
+        
+        // Añadir mensajes de depuración
+        error_log("Ejecutando DELETE para cliente ID: " . $id_cliente);
+        
+        if (!$stmt_delete->execute()) {
+            $error = $stmt_delete->error;
+            
+            // Verificar si es un error de clave externa
+            if (stripos($error, "foreign key constraint") !== false) {
+                throw new Exception('No se puede eliminar el cliente porque tiene registros relacionados. Error: ' . $error);
+            } else {
+                throw new Exception('Error al ejecutar eliminación: ' . $error);
+            }
+        }
 
-    if ($stmt_delete->affected_rows === 0) {
-        throw new Exception('No se eliminó ningún registro');
+        $affected = $stmt_delete->affected_rows;
+        error_log("Filas afectadas por DELETE: " . $affected);
+        
+        if ($affected === 0) {
+            throw new Exception('No se eliminó ningún registro. El cliente posiblemente ya fue eliminado.');
+        }
+        $stmt_delete->close();
+    } catch (Exception $deleteEx) {
+        error_log("Error en la eliminación: " . $deleteEx->getMessage());
+        throw $deleteEx; // Re-lanzamos la excepción para que se maneje en el bloque catch principal
     }
-    $stmt_delete->close();
 
     $conn->commit();
 
@@ -184,11 +267,16 @@ try {
     if (isset($conn) && $conn instanceof mysqli && $conn->thread_id) {
         $conn->rollback();
     }
+    
+    // Registrar el error en el log para diagnóstico
+    error_log("Error en eliminar_cliente.php: " . $e->getMessage());
+    error_log("Trace: " . $e->getTraceAsString());
+    
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error en el servidor',
-        'error' => $e->getMessage()
+        'message' => 'Error en el servidor: ' . $e->getMessage(),
+        'error_details' => $e->getMessage()
     ]);
 } finally {
     if (isset($conn) && $conn instanceof mysqli && $conn->thread_id) {

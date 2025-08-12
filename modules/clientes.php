@@ -78,35 +78,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Obtener datos paginados
-$searchTerm = isset($_GET['buscar_nombre']) ? trim($_GET['buscar_nombre']) : '';
-
-if (!empty($searchTerm)) {
-    // Búsqueda con paginación
-    $searchFields = ['nombre', 'apellido', 'dni', 'celular', "CONCAT(nombre, ' ', apellido)"];
-    $clientesData = $pagination->searchWithPagination(
-        'clientes', 
-        $searchFields, 
-        $searchTerm, 
-        '*', 
-        '', 
-        'fecha_registro DESC'
-    );
+// Obtener clientes (con búsqueda si se especifica)
+if (isset($_GET['buscar_nombre']) && !empty(trim($_GET['buscar_nombre']))) {
+    $buscar_nombre = trim($_GET['buscar_nombre']);
+    
+    $search_sql = "SELECT * FROM clientes 
+                  WHERE nombre LIKE ? 
+                     OR apellido LIKE ? 
+                     OR dni LIKE ?
+                     OR CONCAT(nombre, ' ', apellido) LIKE ?
+                  ORDER BY fecha_registro DESC";
+    
+    $stmt = $conn->prepare($search_sql);
+    $searchTerm = "%$buscar_nombre%";
+    $stmt->bind_param("ssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
 } else {
-    // Listar todos con paginación
-    $clientesData = $pagination->getPaginatedData(
-        'clientes', 
-        '*', 
-        '', 
-        '', 
-        'fecha_registro DESC'
-    );
+    // Obtener todos los clientes ordenados por fecha de registro (más recientes primero)
+    $sql = "SELECT * FROM clientes ORDER BY fecha_registro DESC";
+    $result = $conn->query($sql);
 }
 
-$clientes = $clientesData['data'];
-$paginationInfo = $clientesData['pagination'];
-
-// Obtener estadísticas generales (sin paginación)
+// Obtener estadísticas
 $stats_sql = "SELECT COUNT(*) as total_clientes FROM clientes";
 $stats = $conn->query($stats_sql)->fetch_assoc();
 ?>
@@ -177,27 +172,25 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                     <i class="fas fa-search-result me-2"></i>
                     Resultados para: "<?php echo htmlspecialchars($_GET['buscar_nombre']); ?>"
                 </h5>
-                <span class="badge bg-primary"><?php echo $paginationInfo['total_records']; ?> encontrados</span>
+                <span class="badge bg-primary"><?php echo $result->num_rows; ?> encontrados</span>
             </div>
             <div class="card-body">
-                <?php if (count($clientes) > 0): ?>
+                <?php if ($result->num_rows > 0): ?>
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th width="25%" class="d-none d-sm-table-cell">Cliente</th>
-                                    <th width="100%" class="d-table-cell d-sm-none">Información del Cliente</th>
-                                    <th width="20%" class="d-none d-md-table-cell">Contacto</th>
-                                    <th width="15%" class="d-none d-lg-table-cell">DNI</th>
-                                    <th width="25%" class="d-none d-lg-table-cell">Dirección</th>
-                                    <th width="15%" class="text-center">Acciones</th>
+                                    <th>Cliente</th>
+                                    <th>Contacto</th>
+                                    <th>DNI</th>
+                                    <th>Dirección</th>
+                                    <th width="180" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($clientes as $row): ?>
+                                <?php while ($row = $result->fetch_assoc()): ?>
                                 <tr>
-                                    <!-- Vista Desktop - Cliente -->
-                                    <td class="d-none d-sm-table-cell">
+                                    <td>
                                         <div class="d-flex align-items-center">
                                             <div class="flex-shrink-0 me-3">
                                                 <div class="bg-light rounded-circle p-2 text-center" style="width: 40px; height: 40px;">
@@ -206,102 +199,40 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                             </div>
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-0"><?php echo htmlspecialchars($row['nombre'] . ' ' . $row['apellido']); ?></h6>
-                                                <small class="text-muted">ID: <?php echo $row['id_cliente']; ?></small>
                                             </div>
                                         </div>
                                     </td>
-                                    
-                                    <!-- Vista Mobile - Información Completa -->
-                                    <td class="d-table-cell d-sm-none">
-                                        <div class="card border-0 bg-light">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex align-items-start mb-2">
-                                                    <div class="flex-shrink-0 me-3">
-                                                        <div class="bg-white rounded-circle p-2 text-center" style="width: 45px; height: 45px;">
-                                                            <i class="fas fa-user text-primary" style="font-size: 16px;"></i>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex-grow-1">
-                                                        <h6 class="mb-1 fw-bold"><?php echo htmlspecialchars($row['nombre'] . ' ' . $row['apellido']); ?></h6>
-                                                        <div class="row g-2 text-sm">
-                                                            <div class="col-6">
-                                                                <span class="text-muted">Celular:</span>
-                                                                <div class="fw-bold">
-                                                                    <i class="fas fa-phone text-success me-1"></i>
-                                                                    <?php echo htmlspecialchars($row['celular']); ?>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <span class="text-muted">DNI:</span>
-                                                                <div class="fw-bold">
-                                                                    <?php echo !empty($row['dni']) ? htmlspecialchars($row['dni']) : '<span class="text-muted small">No registrado</span>'; ?>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="mt-2">
-                                                            <span class="text-muted small">Dirección:</span>
-                                                            <div class="fw-bold small">
-                                                                <?php echo !empty($row['direccion']) ? htmlspecialchars($row['direccion']) : '<span class="text-muted">No registrada</span>'; ?>
-                                                            </div>
-                                                        </div>
-                                                        <div class="mt-2">
-                                                            <span class="badge bg-primary rounded-pill">
-                                                                <i class="fas fa-calendar me-1"></i>
-                                                                Registrado: <?php echo date('d/m/Y', strtotime($row['fecha_registro'])); ?>
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="d-none d-md-table-cell">
+                                    <td>
                                         <i class="fas fa-phone text-muted me-2"></i>
                                         <?php echo htmlspecialchars($row['celular']); ?>
                                     </td>
-                                    <td class="d-none d-lg-table-cell">
+                                    <td>
                                         <?php echo !empty($row['dni']) ? htmlspecialchars($row['dni']) : '<span class="text-muted">No registrado</span>'; ?>
                                     </td>
-                                    <td class="d-none d-lg-table-cell">
+                                    <td>
                                         <?php echo !empty($row['direccion']) ? htmlspecialchars($row['direccion']) : '<span class="text-muted">No registrada</span>'; ?>
                                     </td>
                                     <td class="text-center">
-                                        <div class="btn-group d-none d-md-flex" role="group">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editarCliente(<?php echo $row['id_cliente']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Editar cliente">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary" onclick="editarCliente(<?php echo $row['id_cliente']; ?>)" 
+                                                    data-bs-toggle="tooltip" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-info" onclick="verMascotas(<?php echo $row['id_cliente']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Ver mascotas">
+                                            <button class="btn btn-outline-info" onclick="verMascotas(<?php echo $row['id_cliente']; ?>)" 
+                                                    data-bs-toggle="tooltip" title="Ver Mascotas">
                                                 <i class="fas fa-paw"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarCliente(<?php echo $row['id_cliente']; ?>)" 
-                                                    data-bs-toggle="tooltip" title="Eliminar cliente">
+                                            <button class="btn btn-outline-danger" onclick="eliminarCliente(<?php echo $row['id_cliente']; ?>)" 
+                                                    data-bs-toggle="tooltip" title="Eliminar">
                                                 <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                        
-                                        <!-- Botones para móviles -->
-                                        <div class="d-flex d-md-none flex-column gap-1">
-                                            <button class="btn btn-sm btn-outline-primary w-100" onclick="editarCliente(<?php echo $row['id_cliente']; ?>)">
-                                                <i class="fas fa-edit me-1"></i> Editar
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-info w-100" onclick="verMascotas(<?php echo $row['id_cliente']; ?>)">
-                                                <i class="fas fa-paw me-1"></i> Mascotas
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger w-100" onclick="eliminarCliente(<?php echo $row['id_cliente']; ?>)">
-                                                <i class="fas fa-trash me-1"></i> Eliminar
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                                <?php endforeach; ?>
+                                <?php endwhile; ?>
                             </tbody>
                         </table>
                     </div>
-                    
-                    <!-- Paginación -->
-                    <?php echo $pagination->generatePaginationHTML($paginationInfo, '#/clientes'); ?>
                 <?php else: ?>
                     <div class="text-center py-5">
                         <i class="fas fa-search fa-4x text-muted mb-3"></i>
@@ -325,7 +256,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
             </div>
         </div>
         <div class="card-body">
-            <?php if (count($clientes) > 0): ?>
+            <?php if ($result->num_rows > 0): ?>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">
@@ -338,7 +269,7 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($clientes as $row): ?>
+                            <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
@@ -379,14 +310,10 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
                                     </div>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                            <?php endwhile; ?>
                         </tbody>
                     </table>
                 </div>
-                
-                <!-- Paginación -->
-                <?php echo $pagination->generatePaginationHTML($paginationInfo, '#/clientes'); ?>
-                
             <?php else: ?>
                 <div class="text-center py-5">
                     <i class="fas fa-users fa-4x text-muted mb-3"></i>
@@ -487,100 +414,21 @@ $stats = $conn->query($stats_sql)->fetch_assoc();
 <script>
 // Funciones para los botones de acción
 function editarCliente(id) {
-    // Resetear el contenido del modal con loading
-    $('#contenidoModalEditar').html(`
-        <div class="modal-body text-center p-5">
-            <div class="d-flex flex-column align-items-center">
-                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-                <h5 class="text-muted">Cargando información del cliente...</h5>
-                <p class="text-muted small mb-0">Por favor, espera un momento</p>
-            </div>
-        </div>
-    `);
-    
-    // Mostrar el modal inmediatamente
-    $('#editarClienteModal').modal('show');
-    
     $.ajax({
-        url: 'modules/editar_cliente.php',
+        url: 'modules/editar_cliente.php?id=' + id,
         method: 'GET',
-        data: { id: id },
-        timeout: 10000, // 10 segundos de timeout
         success: function(response) {
             $('#contenidoModalEditar').html(response);
+            $('#editarClienteModal').modal('show');
         },
-        error: function(xhr, status, error) {
-            let errorMessage = 'No se pudo cargar el formulario de edición';
-            
-            if (status === 'timeout') {
-                errorMessage = 'La solicitud tardó demasiado tiempo. Verifica tu conexión.';
-            } else if (xhr.status === 404) {
-                errorMessage = 'Cliente no encontrado.';
-            } else if (xhr.status === 500) {
-                errorMessage = 'Error interno del servidor.';
-            }
-            
-            $('#contenidoModalEditar').html(`
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-exclamation-triangle me-2"></i> Error al cargar
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center p-5">
-                    <div class="d-flex flex-column align-items-center">
-                        <i class="fas fa-exclamation-circle fa-4x text-danger mb-3"></i>
-                        <h5 class="text-danger mb-3">¡Ups! Algo salió mal</h5>
-                        <p class="text-muted mb-4">${errorMessage}</p>
-                        <div class="d-flex gap-2 flex-column flex-sm-row">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                                <i class="fas fa-times me-1"></i> Cerrar
-                            </button>
-                            <button type="button" class="btn btn-primary" onclick="editarCliente(${id})">
-                                <i class="fas fa-refresh me-1"></i> Reintentar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `);
+        error: function() {
+            alert('Error al cargar los datos del cliente');
         }
     });
 }
 
 function verMascotas(id) {
-    console.log('Viendo mascotas del cliente ID:', id);
-    
-    // Mostrar loading
-    Swal.fire({
-        title: 'Cargando...',
-        text: 'Obteniendo mascotas del cliente',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    $.ajax({
-        url: 'modules/mascotas.php',
-        method: 'GET',
-        data: { cliente_id: id },
-        success: function(response) {
-            Swal.close();
-            $('#contenido').html(response);
-        },
-        error: function() {
-            Swal.close();
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al cargar las mascotas del cliente',
-                confirmButtonColor: '#7c4dff'
-            });
-        }
-    });
+    window.location.href = 'index.php#/mascotas?cliente=' + id;
 }
 
 function realizarBusqueda() {
@@ -617,256 +465,158 @@ function descargarExcel(tabla) {
 }
 
 function eliminarCliente(id) {
-    // Primero obtener información del cliente
-    $.ajax({
-        url: 'modules/editar_cliente.php',
-        method: 'GET',
-        data: { id: id, info_only: true },
-        dataType: 'json',
-        success: function(cliente) {
+    console.log('Función eliminarCliente llamada con ID:', id);
+    
+    // Verificar si SweetAlert2 está disponible
+    if (typeof Swal === 'undefined') {
+        alert('SweetAlert2 no está disponible');
+        return;
+    }
+    
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede deshacer",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e53e3e',
+        cancelButtonColor: '#3182ce',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            console.log('Usuario confirmó eliminación, enviando AJAX...');
+            
+            // Mostrar loading
             Swal.fire({
-                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i>¿Eliminar cliente?',
-                html: `
-                    <div class="text-start">
-                        <p class="mb-2">Estás a punto de eliminar al cliente:</p>
-                        <div class="card bg-light border-warning">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0 me-3">
-                                        <div class="bg-white rounded-circle p-2 text-center" style="width: 45px; height: 45px;">
-                                            <i class="fas fa-user text-primary" style="font-size: 16px;"></i>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title mb-1">
-                                            <strong>${cliente.nombre} ${cliente.apellido}</strong>
-                                        </h6>
-                                        <div class="text-muted small">
-                                            <div><strong>Celular:</strong> ${cliente.celular}</div>
-                                            ${cliente.dni ? `<div><strong>DNI:</strong> ${cliente.dni}</div>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="alert alert-warning mt-3 mb-0 d-flex align-items-center">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <small><strong>Advertencia:</strong> Esta acción eliminará al cliente y todas sus mascotas asociadas. No se puede deshacer.</small>
-                        </div>
-                    </div>
-                `,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
-                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
-                reverseButtons: true,
-                customClass: {
-                    popup: 'swal-responsive',
-                    title: 'swal-title-responsive',
-                    htmlContainer: 'swal-html-responsive',
-                    confirmButton: 'swal-btn-responsive',
-                    cancelButton: 'swal-btn-responsive'
-                },
-                backdrop: true,
+                title: 'Eliminando...',
+                text: 'Por favor espere',
                 allowOutsideClick: false,
-                allowEscapeKey: true,
-                allowEnterKey: false,
-                showClass: {
-                    popup: 'animate__animated animate__fadeInDown animate__faster'
-                },
-                hideClass: {
-                    popup: 'animate__animated animate__fadeOutUp animate__faster'
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
                 }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Mostrar loading
-                    Swal.fire({
-                        title: 'Eliminando cliente...',
-                        html: '<div class="d-flex justify-content-center"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Cargando...</span></div></div>',
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        showConfirmButton: false,
-                        customClass: {
-                            popup: 'swal-responsive'
-                        }
-                    });
+            });
+            
+            $.ajax({
+                url: 'modules/eliminar_cliente.php',
+                method: 'POST',
+                data: { id: id },
+                dataType: 'json',
+                timeout: 15000, // 15 segundos timeout
+                beforeSend: function() {
+                    console.log('Enviando petición AJAX a:', 'modules/eliminar_cliente.php');
+                    console.log('Datos:', { id: id });
+                },
+                success: function(response) {
+                    console.log('Respuesta AJAX exitosa:', response);
+                    Swal.close(); // Cerrar loading
                     
-                    $.ajax({
-                        url: 'modules/eliminar_cliente.php',
-                        method: 'POST',
-                        data: { id: id },
-                        dataType: 'json',
-                        success: function(response) {
-                            if (response.success) {
-                                let mensaje = response.message || 'Cliente eliminado correctamente';
-                                
-                                if (response.pets_count > 0) {
-                                    mensaje += `\n\nSe eliminaron también ${response.pets_count} mascota(s): ${response.deleted_pets.join(', ')}`;
-                                }
-                                
-                                Swal.fire({
-                                    title: '¡Eliminado!',
-                                    html: `
-                                        <div class="text-center">
-                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                                            <p class="mb-0">El cliente ha sido eliminado correctamente.</p>
-                                        </div>
-                                    `,
-                                    icon: 'success',
-                                    confirmButtonColor: '#28a745',
-                                    confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido',
-                                    customClass: {
-                                        popup: 'swal-responsive'
-                                    }
-                                }).then(() => {
+                    if (response && response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: response.message || 'Cliente eliminado correctamente',
+                            confirmButtonColor: '#7c4dff',
+                            confirmButtonText: 'Aceptar'
+                        }).then(() => {
+                            // Recargar la lista sin recargar toda la página
+                            $.ajax({
+                                url: 'modules/clientes.php',
+                                method: 'GET',
+                                success: function(data) {
+                                    $('#contenido').html(data);
+                                    // Reinicializar eventos
+                                    $('[data-bs-toggle="tooltip"]').tooltip();
+                                },
+                                error: function() {
+                                    // Si falla, recargar toda la página
                                     location.reload();
-                                });
-                            } else {
-                                Swal.fire({
-                                    title: 'Error al eliminar',
-                                    html: `
-                                        <div class="text-center">
-                                            <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
-                                            <p class="mb-0">${response.message || 'No se pudo eliminar el cliente'}</p>
-                                        </div>
-                                    `,
-                                    icon: 'error',
-                                    confirmButtonColor: '#dc3545',
-                                    confirmButtonText: '<i class="fas fa-times me-1"></i> Cerrar',
-                                    customClass: {
-                                        popup: 'swal-responsive'
-                                    }
-                                });
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('Error AJAX:', {
-                                xhr: xhr,
-                                status: status,
-                                error: error,
-                                responseText: xhr.responseText
+                                }
                             });
+                        });
+                    } else {
+                        if (response && response.has_pets) {
+                            // Caso especial: cliente con mascotas
+                            const petNames = response.pet_names ? response.pet_names.join(", ") : '';
                             
                             Swal.fire({
-                                title: 'Error de conexión',
-                                html: `
-                                    <div class="text-center">
-                                        <i class="fas fa-wifi fa-3x text-danger mb-3"></i>
-                                        <p class="mb-0">No se pudo completar la solicitud. Verifica tu conexión.</p>
-                                    </div>
-                                `,
-                                icon: 'error',
-                                confirmButtonColor: '#dc3545',
-                                confirmButtonText: '<i class="fas fa-refresh me-1"></i> Reintentar',
-                                customClass: {
-                                    popup: 'swal-responsive'
+                                icon: 'warning',
+                                title: 'No se puede eliminar',
+                                html: `<p>${response.message || 'Este cliente tiene mascotas registradas. Elimine primero las mascotas.'}</p>
+                                      <p class="mt-2">¿Desea ir a la sección de mascotas para eliminarlas?</p>`,
+                                showCancelButton: true,
+                                confirmButtonColor: '#3085d6',
+                                cancelButtonColor: '#6c757d',
+                                confirmButtonText: 'Ir a mascotas',
+                                cancelButtonText: 'Cancelar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Redirigir a la sección de mascotas del cliente
+                                    window.location.href = 'index.php#/mascotas?cliente=' + id;
                                 }
                             });
+                        } else if (response && response.has_dependencies) {
+                            // Caso especial: cliente con otras dependencias (ventas, historias, etc.)
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'No se puede eliminar',
+                                html: `<p>${response.message || 'Este cliente tiene registros relacionados en el sistema.'}</p>
+                                       <p class="mt-2">Debe eliminar primero estos registros antes de eliminar al cliente.</p>`,
+                                confirmButtonColor: '#3085d6',
+                                confirmButtonText: 'Entendido'
+                            });
+                        } else {
+                            // Otros errores
+                            let errorMsg = response.message || 'Error desconocido';
+                            if (response.error_details) {
+                                console.error('Detalles del error:', response.error_details);
+                                // Extraer el mensaje de error real para una mejor experiencia de usuario
+                                if (response.error_details.includes("foreign key constraint")) {
+                                    errorMsg = "No se puede eliminar el cliente porque tiene registros relacionados en el sistema.";
+                                }
+                            }
+                            
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: errorMsg,
+                                confirmButtonColor: '#7c4dff',
+                                confirmButtonText: 'OK'
+                            });
                         }
-                    });
-                }
-            });
-        },
-        error: function() {
-            // Fallback si no se puede obtener info del cliente
-            Swal.fire({
-                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i>¿Eliminar cliente?',
-                html: `
-                    <div class="text-start">
-                        <p class="mb-2">Estás a punto de eliminar este cliente.</p>
-                        <div class="alert alert-warning mt-3 mb-0 d-flex align-items-center">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <small><strong>Advertencia:</strong> Esta acción no se puede deshacer.</small>
-                        </div>
-                    </div>
-                `,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
-                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
-                customClass: {
-                    popup: 'swal-responsive'
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Mostrar loading
-                    Swal.fire({
-                        title: 'Eliminando cliente...',
-                        html: '<div class="d-flex justify-content-center"><div class="spinner-border text-danger" role="status"><span class="visually-hidden">Cargando...</span></div></div>',
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        showConfirmButton: false,
-                        customClass: {
-                            popup: 'swal-responsive'
-                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error AJAX completo:', {
+                        xhr: xhr,
+                        status: status,
+                        error: error,
+                        responseText: xhr.responseText
                     });
                     
-                    $.ajax({
-                        url: 'modules/eliminar_cliente.php',
-                        method: 'POST',
-                        data: { id: id },
-                        dataType: 'json',
-                        success: function(response) {
-                            if (response.success) {
-                                Swal.fire({
-                                    title: '¡Eliminado!',
-                                    html: `
-                                        <div class="text-center">
-                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                                            <p class="mb-0">El cliente ha sido eliminado correctamente.</p>
-                                        </div>
-                                    `,
-                                    icon: 'success',
-                                    confirmButtonColor: '#28a745',
-                                    confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido',
-                                    customClass: {
-                                        popup: 'swal-responsive'
-                                    }
-                                }).then(() => {
-                                    location.reload();
-                                });
-                            } else {
-                                Swal.fire({
-                                    title: 'Error al eliminar',
-                                    html: `
-                                        <div class="text-center">
-                                            <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
-                                            <p class="mb-0">${response.message || 'No se pudo eliminar el cliente'}</p>
-                                        </div>
-                                    `,
-                                    icon: 'error',
-                                    confirmButtonColor: '#dc3545',
-                                    confirmButtonText: '<i class="fas fa-times me-1"></i> Cerrar',
-                                    customClass: {
-                                        popup: 'swal-responsive'
-                                    }
-                                });
-                            }
-                        },
-                        error: function() {
-                            Swal.fire({
-                                title: 'Error de conexión',
-                                html: `
-                                    <div class="text-center">
-                                        <i class="fas fa-wifi fa-3x text-danger mb-3"></i>
-                                        <p class="mb-0">No se pudo completar la solicitud. Verifica tu conexión.</p>
-                                    </div>
-                                `,
-                                icon: 'error',
-                                confirmButtonColor: '#dc3545',
-                                confirmButtonText: '<i class="fas fa-refresh me-1"></i> Reintentar',
-                                customClass: {
-                                    popup: 'swal-responsive'
-                                }
-                            });
+                    Swal.close(); // Cerrar loading
+                    
+                    let errorMessage = 'Error de conexión';
+                    if (xhr.responseText) {
+                        try {
+                            const errorResponse = JSON.parse(xhr.responseText);
+                            errorMessage = errorResponse.message || errorMessage;
+                        } catch (e) {
+                            errorMessage = 'Error: ' + error + ' - Status: ' + status;
                         }
+                    }
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMessage,
+                        confirmButtonColor: '#7c4dff',
+                        confirmButtonText: 'OK'
                     });
                 }
             });
+        } else {
+            console.log('Usuario canceló la eliminación');
         }
     });
 }
@@ -882,78 +632,8 @@ $(document).ready(function() {
         realizarBusqueda();
     });
     
-    // Manejar envío del formulario de nuevo cliente
-    $('#formNuevoCliente').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Prevenir múltiples envíos
-        if ($(this).data('submitting')) {
-            return false;
-        }
-        $(this).data('submitting', true);
-        
-        // Validar campos obligatorios
-        if (!$('#nombre').val().trim()) {
-            $(this).data('submitting', false);
-            return;
-        }
-        
-        if (!$('#apellido').val().trim()) {
-            $(this).data('submitting', false);
-            return;
-        }
-        
-        if (!$('#celular').val().trim()) {
-            $(this).data('submitting', false);
-            return;
-        }
-        
-        // Enviar datos via AJAX
-        const formData = new FormData();
-        formData.append('nombre', $('#nombre').val().trim());
-        formData.append('apellido', $('#apellido').val().trim());
-        formData.append('celular', $('#celular').val().trim());
-        formData.append('dni', $('#dni').val().trim());
-        formData.append('direccion', $('#direccion').val().trim());
-        
-        $.ajax({
-            url: 'modules/clientes.php',
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json',
-            success: function(response) {
-                $('#formNuevoCliente').data('submitting', false);
-                if (response.success) {
-                    // Cerrar modal
-                    $('#nuevoClienteModal').modal('hide');
-                    
-                    // Limpiar formulario
-                    $('#formNuevoCliente')[0].reset();
-                    
-                    // Recargar solo el contenido de clientes
-                    $.ajax({
-                        url: 'modules/clientes.php',
-                        method: 'GET',
-                        success: function(data) {
-                            $('#contenido').html(data);
-                        },
-                        error: function() {
-                            // Si falla, recargar toda la página
-                            window.location.reload();
-                        }
-                    });
-                }
-            },
-            error: function(xhr, status, error) {
-                $('#formNuevoCliente').data('submitting', false);
-                // Solo cerrar el modal y limpiar, sin mostrar mensaje de error
-                $('#nuevoClienteModal').modal('hide');
-                $('#formNuevoCliente')[0].reset();
-            }
-        });
-    });
+    // No se maneja el envío del formulario aquí ya que se maneja en clientes.js
+    // Esto evita la duplicación de envíos
     
     // Validación del formulario de nuevo cliente
     $('#formNuevoCliente').validate({
@@ -1011,230 +691,5 @@ $(document).ready(function() {
             $(element).removeClass('is-invalid');
         }
     });
-    
-    // Ajustar modal según el tamaño de pantalla
-    function adjustModalForScreen() {
-        const isMobile = window.innerWidth < 768;
-        const modalDialogs = document.querySelectorAll('.modal-dialog');
-        
-        modalDialogs.forEach(modal => {
-            if (isMobile) {
-                modal.classList.add('modal-fullscreen-sm-down');
-            } else {
-                modal.classList.remove('modal-fullscreen-sm-down');
-            }
-        });
-    }
-    
-    // Ejecutar al cargar y redimensionar
-    adjustModalForScreen();
-    window.addEventListener('resize', adjustModalForScreen);
-    
-    // Mejorar accesibilidad en dispositivos táctiles
-    if ('ontouchstart' in window) {
-        // Añadir clase para dispositivos táctiles
-        document.body.classList.add('touch-device');
-        
-        // Mejorar interacción con botones pequeños
-        $('.btn-sm').addClass('touch-friendly');
-    }
 });
 </script>
-
-<!-- Estilos CSS para mejorar la responsividad -->
-<style>
-/* Estilos para SweetAlert responsivo */
-.swal-responsive {
-    font-size: 14px !important;
-}
-
-@media (max-width: 576px) {
-    .swal-responsive {
-        width: 95% !important;
-        margin: 10px !important;
-        font-size: 13px !important;
-    }
-    
-    .swal-title-responsive {
-        font-size: 18px !important;
-        line-height: 1.3 !important;
-    }
-    
-    .swal-html-responsive {
-        font-size: 13px !important;
-    }
-    
-    .swal-btn-responsive {
-        padding: 8px 16px !important;
-        font-size: 13px !important;
-        min-width: 100px !important;
-    }
-}
-
-/* Mejoras para dispositivos táctiles */
-.touch-device .btn-sm.touch-friendly {
-    min-height: 40px;
-    min-width: 40px;
-    padding: 8px 12px;
-}
-
-.touch-device .table-responsive {
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Mejoras para modales en móviles */
-@media (max-width: 767px) {
-    .modal-dialog {
-        margin: 10px;
-        width: calc(100% - 20px);
-    }
-    
-    .modal-fullscreen-sm-down {
-        width: 100vw;
-        max-width: none;
-        height: 100vh;
-        margin: 0;
-    }
-    
-    .modal-fullscreen-sm-down .modal-content {
-        height: 100vh;
-        border: 0;
-        border-radius: 0;
-    }
-    
-    .modal-fullscreen-sm-down .modal-header {
-        border-radius: 0;
-    }
-    
-    .modal-fullscreen-sm-down .modal-body {
-        overflow-y: auto;
-        max-height: calc(100vh - 140px);
-    }
-}
-
-/* Mejoras para la tabla en móviles */
-@media (max-width: 576px) {
-    .table-responsive {
-        border: none;
-    }
-    
-    .table {
-        margin-bottom: 0;
-    }
-    
-    .table td {
-        border: none;
-        padding: 0.5rem 0.25rem;
-    }
-    
-    /* Mejorar la vista mobile de clientes */
-    .d-table-cell.d-sm-none .card {
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: all 0.2s ease;
-    }
-    
-    .d-table-cell.d-sm-none .card:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        transform: translateY(-1px);
-    }
-}
-
-/* Mejoras para el scroll horizontal en tablets */
-@media (min-width: 577px) and (max-width: 991px) {
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-/* Ajustes para botones en la tabla */
-@media (max-width: 767px) {
-    .btn-group .btn-sm {
-        margin-bottom: 2px;
-        border-radius: 4px !important;
-    }
-}
-
-/* Mejoras para formularios en móviles */
-@media (max-width: 576px) {
-    .input-group-text {
-        min-width: auto;
-        padding: 0.375rem 0.5rem;
-    }
-    
-    .form-label {
-        font-size: 14px;
-        margin-bottom: 0.25rem;
-    }
-    
-    .form-control {
-        font-size: 16px; /* Evita zoom en iOS */
-    }
-    
-    .btn {
-        padding: 0.5rem 1rem;
-        font-size: 14px;
-    }
-    
-    .modal-footer {
-        padding: 1rem;
-    }
-    
-    .modal-footer .btn {
-        margin-bottom: 0.5rem;
-    }
-}
-
-/* Animaciones suaves */
-.card {
-    transition: all 0.2s ease;
-}
-
-.btn {
-    transition: all 0.2s ease;
-}
-
-.modal.fade .modal-dialog {
-    transition: transform 0.2s ease-out;
-}
-
-/* Mejoras para la accesibilidad */
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-/* Loading states */
-.spinner-border-sm {
-    width: 1rem;
-    height: 1rem;
-}
-
-/* Focus states para accesibilidad */
-.btn:focus,
-.form-control:focus {
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    border-color: #80bdff;
-}
-
-/* Alto contraste para texto importante */
-.fw-bold {
-    font-weight: 600 !important;
-}
-
-/* Mejoras para badges */
-.badge {
-    font-size: 0.7em;
-    padding: 0.35em 0.65em;
-}
-
-@media (max-width: 576px) {
-    .badge {
-        font-size: 0.6em;
-        padding: 0.25em 0.5em;
-    }
-}
-</style>

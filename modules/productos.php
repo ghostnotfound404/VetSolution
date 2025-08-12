@@ -388,7 +388,7 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                             <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
                             <h4>No hay productos registrados</h4>
                             <p class="text-muted">Comienza agregando nuevos productos haciendo clic en el botón "Nuevo Producto"</p>
-                            <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
+                            <button type="button" class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#nuevoProductoModal">
                                 <i class="fas fa-plus-circle me-1"></i> Agregar Producto
                             </button>
                         <?php endif; ?>
@@ -482,10 +482,10 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                 </form>
             </div>
             <div class="modal-footer flex-column flex-sm-row p-3">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-secondary w-100 w-sm-auto mb-2 mb-sm-0 me-sm-2" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Cancelar
                 </button>
-                <button type="submit" form="formNuevoProducto" class="btn btn-success">
+                <button type="submit" form="formNuevoProducto" class="btn btn-primary w-100 w-sm-auto">
                     <i class="fas fa-save me-1"></i> 
                     <span class="d-none d-sm-inline">Guardar Producto</span>
                     <span class="d-inline d-sm-none">Guardar</span>

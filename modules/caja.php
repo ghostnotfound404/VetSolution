@@ -32,7 +32,7 @@ $joins = "LEFT JOIN mascotas m ON v.id_mascota = m.id_mascota
           LEFT JOIN productos p ON v.tipo_item = 'producto' AND v.id_item = p.id_producto
           LEFT JOIN servicios s ON v.tipo_item = 'servicio' AND v.id_item = s.id_servicio";
 
-$select = "v.fecha_venta as fecha, v.subtotal, v.medio_pago,
+$select = "v.id_venta, v.fecha_venta as fecha, v.subtotal, v.medio_pago,
            m.nombre as nombre_mascota,
            CONCAT(c.nombre, ' ', c.apellido) as nombre_cliente,
            CASE 
@@ -76,33 +76,8 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
 
 <div class="container-fluid px-4 caja">
     <!-- Encabezado con estadísticas -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded shadow-sm border">
-                <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="fas fa-cash-register fa-2x text-primary"></i>
-                    </div>
-                    <div>
-                        <h2 class="mb-0 text-dark">Reporte de Caja</h2>
-                        <small class="text-muted">Sistema de Control de Ventas</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <div class="text-center">
-                        <div class="text-muted small">Fecha</div>
-                        <div class="fw-bold"><?php echo date('d/m/Y'); ?></div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-muted small">Hora</div>
-                        <div class="fw-bold"><?php echo date('H:i'); ?></div>
-                    </div>
-                    <button class="btn btn-outline-primary" onclick="window.print()">
-                        <i class="fas fa-print me-2"></i>Imprimir
-                    </button>
-                </div>
-            </div>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-cash-register me-2"></i>Reporte de Caja</h2>
     </div>
 
     <!-- Tarjetas de Resumen -->
@@ -196,78 +171,50 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
     </div>
 
     <!-- Tabla de Ventas -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-gradient-primary text-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Registro de Ventas</h5>
-                <span class="badge bg-light text-dark">Total: <?php echo count($ventas); ?> registros</span>
-            </div>
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Registro de Ventas</h5>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover table-striped mb-0">
-                    <thead class="table-dark">
+                <table class="table table-hover">
                         <tr>
-                            <th class="border-0"><i class="fas fa-calendar me-1"></i>Fecha</th>
-                            <th class="border-0"><i class="fas fa-user me-1"></i>Cliente / Mascota</th>
-                            <th class="border-0"><i class="fas fa-box me-1"></i>Item</th>
-                            <th class="border-0 text-center"><i class="fas fa-hashtag me-1"></i>Cantidad</th>
-                            <th class="border-0 text-end"><i class="fas fa-money-bill me-1"></i>Subtotal</th>
-                            <th class="border-0 text-center"><i class="fas fa-credit-card me-1"></i>Medio Pago</th>
+                            <th>Fecha</th>
+                            <th>Cliente / Mascota</th>
+                            <th>Item</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal</th>
+                            <th>Medio Pago</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (count($ventas) > 0): ?>
                             <?php foreach ($ventas as $row): ?>
-                            <tr class="align-middle">
-                                <td class="fw-bold text-primary"><?php echo date('d/m/Y H:i', strtotime($row['fecha'])); ?></td>
+                            <tr>
+                                <td><?php echo date('d/m/Y H:i', strtotime($row['fecha'])); ?></td>
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <i class="fas fa-user-circle text-muted fa-lg"></i>
-                                        </div>
-                                        <div>
-                                            <?php 
-                                            if (!empty($row['nombre_cliente'])) {
-                                                echo '<strong>' . htmlspecialchars($row['nombre_cliente']) . '</strong>';
-                                                if (!empty($row['nombre_mascota'])) {
-                                                    echo '<br><small class="text-muted"><i class="fas fa-paw me-1"></i>' . htmlspecialchars($row['nombre_mascota']) . '</small>';
-                                                }
-                                            } else {
-                                                echo '<span class="text-muted"><i class="fas fa-user-slash me-1"></i>Cliente no registrado</span>';
-                                            }
-                                            ?>
-                                        </div>
-                                    </div>
+                                    <?php 
+                                    if (!empty($row['nombre_cliente'])) {
+                                        echo htmlspecialchars($row['nombre_cliente']);
+                                        if (!empty($row['nombre_mascota'])) {
+                                            echo '<br><small class="text-muted">Mascota: ' . htmlspecialchars($row['nombre_mascota']) . '</small>';
+                                        }
+                                    } else {
+                                        echo '<span class="text-muted">Cliente no registrado</span>';
+                                    }
+                                    ?>
                                 </td>
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <i class="fas fa-<?php echo $row['tipo_item'] == 'producto' ? 'box' : 'stethoscope'; ?> text-<?php echo $row['tipo_item'] == 'producto' ? 'primary' : 'success'; ?>"></i>
-                                        </div>
-                                        <div>
-                                            <strong><?php echo htmlspecialchars($row['item_nombre']); ?></strong>
-                                            <br><small class="badge bg-<?php echo $row['tipo_item'] == 'producto' ? 'primary' : 'success'; ?>"><?php echo ucfirst($row['tipo_item']); ?></small>
-                                        </div>
-                                    </div>
+                                    <?php echo htmlspecialchars($row['item_nombre']); ?>
+                                    <br><small class="text-muted"><?php echo ucfirst($row['tipo_item']); ?></small>
                                 </td>
-                                <td class="text-center">
-                                    <span class="badge bg-info fs-6"><?php echo $row['cantidad']; ?></span>
-                                </td>
-                                <td class="text-end">
-                                    <strong class="text-success fs-5">S/ <?php echo number_format($row['subtotal'], 2); ?></strong>
-                                </td>
-                                <td class="text-center">
+                                <td><?php echo $row['cantidad']; ?></td>
+                                <td>S/ <?php echo number_format($row['subtotal'], 2); ?></td>
+                                <td>
                                     <span class="badge bg-<?php 
                                         echo $row['medio_pago'] == 'Efectivo' ? 'success' : 
-                                             ($row['medio_pago'] == 'Tarjeta' ? 'primary' : 
-                                             ($row['medio_pago'] == 'Yape' ? 'warning' : 'info')); 
-                                    ?> fs-6">
-                                        <i class="fas fa-<?php 
-                                            echo $row['medio_pago'] == 'Efectivo' ? 'money-bill' : 
-                                                 ($row['medio_pago'] == 'Tarjeta' ? 'credit-card' : 
-                                                 ($row['medio_pago'] == 'Yape' ? 'mobile-alt' : 'university')); 
-                                        ?> me-1"></i>
+                                             ($row['medio_pago'] == 'Tarjeta' ? 'primary' : 'warning'); 
+                                    ?>">
                                         <?php echo htmlspecialchars($row['medio_pago']); ?>
                                     </span>
                                 </td>
@@ -275,12 +222,9 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="text-center py-5">
-                                    <div class="text-muted">
-                                        <i class="fas fa-cash-register fa-4x mb-3 d-block text-secondary"></i>
-                                        <h4 class="text-secondary">No hay ventas registradas</h4>
-                                        <p class="mb-0">No se encontraron registros de ventas en el período seleccionado</p>
-                                    </div>
+                                <td colspan="6" class="text-center py-4">
+                                    <i class="fas fa-cash-register fa-3x text-muted mb-3"></i>
+                                    <h4>No hay ventas registradas</h4>
                                 </td>
                             </tr>
                         <?php endif; ?>
@@ -289,9 +233,8 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
             </div>
             
             <!-- Paginación -->
-            <div class="card-footer bg-light">
-                <?php echo $pagination->generatePaginationHTML($paginationInfo, '#/caja'); ?>
-            </div>
+            <?php echo $pagination->generatePaginationHTML($paginationInfo, '#/caja'); ?>
+            
         </div>
     </div>
 </div>
@@ -301,39 +244,4 @@ function limpiarFiltros() {
     window.location.href = 'index.php#/caja';
 }
 </script>
-
-<style>
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-}
-
-.table-dark th {
-    background-color: #343a40 !important;
-    border-color: #454d55 !important;
-}
-
-.table-striped > tbody > tr:nth-of-type(odd) > td {
-    background-color: rgba(0, 123, 255, 0.05);
-}
-
-.table-hover tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.1);
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
-}
-
-.card {
-    border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-
-.badge {
-    font-size: 0.75rem !important;
-}
-
-@media print {
-    .btn, .pagination, .card-footer {
-        display: none !important;
-    }
-}
-</style>
+</script>

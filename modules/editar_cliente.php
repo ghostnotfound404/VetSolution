@@ -1,7 +1,7 @@
 <?php
 include('../includes/config.php');
 
-// Si es una petición GET, mostrar el formulario de edición o información del cliente
+// Si es una petición GET, mostrar el formulario de edición
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     $id_cliente = intval($_GET['id']);
     
@@ -19,13 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     
     $cliente = $result->fetch_assoc();
     $stmt->close();
-    
-    // Si solo se solicita información del cliente (para confirmación de eliminación)
-    if (isset($_GET['info_only']) && $_GET['info_only'] == 'true') {
-        header('Content-Type: application/json');
-        echo json_encode($cliente);
-        exit();
-    }
 ?>
 
 <div class="modal-header bg-warning text-white">
@@ -335,104 +328,6 @@ $(document).ready(function() {
             e.preventDefault();
             confirmarEdicion();
         }
-    });
-});
-</script>
-            title: 'DNI inválido',
-            text: 'El DNI debe tener exactamente 8 dígitos'
-        });
-        return;
-    }
-    
-    // Mostrar confirmación como en la imagen
-    Swal.fire({
-        title: '¿Estás seguro?',
-        text: "Se guardarán los cambios realizados",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#f0ad4e',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, guardar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            actualizarCliente();
-        }
-    });
-}
-
-function actualizarCliente() {
-    const formData = {
-        id: $('#edit_id_cliente').val(),
-        nombre: $('#edit_nombre').val().trim(),
-        apellido: $('#edit_apellido').val().trim(),
-        celular: $('#edit_celular').val().trim(),
-        dni: $('#edit_dni').val().trim(),
-        direccion: $('#edit_direccion').val().trim()
-    };
-    
-    $.ajax({
-        url: 'modules/editar_cliente.php',
-        method: 'POST',
-        data: formData,
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                // Mostrar éxito como en la imagen
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Éxito!',
-                    text: response.message,
-                    confirmButtonColor: '#7c4dff',
-                    confirmButtonText: 'Aceptar'
-                }).then(() => {
-                    // Cerrar modal
-                    $('#editarClienteModal').modal('hide');
-                    
-                    // Recargar lista de clientes
-                    $.ajax({
-                        url: 'modules/clientes.php',
-                        method: 'GET',
-                        success: function(data) {
-                            $('#contenido').html(data);
-                        }
-                    });
-                });
-            } else {
-                // Mostrar error como en la imagen
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message,
-                    confirmButtonColor: '#7c4dff',
-                    confirmButtonText: 'OK'
-                });
-            }
-        },
-        error: function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al actualizar el cliente',
-                confirmButtonColor: '#7c4dff',
-                confirmButtonText: 'OK'
-            });
-        }
-    });
-}
-
-// Validación en tiempo real
-$(document).ready(function() {
-    // Validación para celular
-    $('#edit_celular').on('input', function() {
-        var valor = $(this).val().replace(/\D/g, '');
-        $(this).val(valor.substring(0, 9));
-    });
-    
-    // Validación para DNI
-    $('#edit_dni').on('input', function() {
-        var valor = $(this).val().replace(/\D/g, '');
-        $(this).val(valor.substring(0, 8));
     });
 });
 </script>
