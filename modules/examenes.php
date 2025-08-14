@@ -555,13 +555,35 @@ $(document).ready(function() {
         const resultsDiv = $('#mascota_results');
         
         if (termino.length >= 2) {
+            // Mostrar indicador de carga
+            resultsDiv.html(`
+                <div class="dropdown-item p-3 text-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Buscando...</span>
+                    </div>
+                    <small class="ms-2 text-muted">Buscando mascotas...</small>
+                </div>
+            `).show();
+            
             $.ajax({
                 url: 'modules/buscar_mascotas.php',
-                method: 'GET',
-                data: { termino: termino },
+                method: 'POST',
+                data: { query: termino },
                 dataType: 'json',
-                success: function(mascotas) {
+                success: function(response) {
                     resultsDiv.empty().show();
+                    
+                    // Verificar si la respuesta contiene un error
+                    if (response && response.error) {
+                        resultsDiv.html(`<div class="dropdown-item text-danger p-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${response.message || 'Error en la búsqueda'}
+                        </div>`);
+                        return;
+                    }
+                    
+                    // Procesar los resultados (mascotas)
+                    const mascotas = Array.isArray(response) ? response : [];
                     
                     if (mascotas.length > 0) {
                         mascotas.forEach(function(mascota) {
@@ -574,15 +596,15 @@ $(document).ready(function() {
                                             </div>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <h6 class="mb-0">${mascota.nombre}</h6>
-                                            <small class="text-muted">${mascota.nombre_cliente} ${mascota.apellido_cliente}</small>
+                                            <h6 class="mb-0">${mascota.nombre_mascota} <span class="badge bg-light text-dark small">${mascota.especie || 'Mascota'}</span></h6>
+                                            <small class="text-muted">Propietario: ${mascota.propietario}</small>
                                         </div>
                                     </div>
                                 </div>
                             `);
                             
                             item.click(function() {
-                                $('#mascota_search').val(mascota.nombre + ' - ' + mascota.nombre_cliente + ' ' + mascota.apellido_cliente);
+                                $('#mascota_search').val(mascota.nombre_mascota + ' - ' + mascota.propietario);
                                 $('#mascota_select').val(mascota.id_mascota);
                                 resultsDiv.hide();
                             });
@@ -593,8 +615,17 @@ $(document).ready(function() {
                         resultsDiv.html('<div class="dropdown-item text-muted p-3"><i class="fas fa-search me-2"></i>No se encontraron mascotas</div>');
                     }
                 },
-                error: function() {
-                    resultsDiv.html('<div class="dropdown-item text-danger p-3"><i class="fas fa-exclamation-triangle me-2"></i>Error al buscar mascotas</div>');
+                error: function(xhr, status, error) {
+                    console.error("Error al buscar mascotas:", status, error);
+                    resultsDiv.html(`
+                        <div class="dropdown-item text-danger p-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Error al buscar mascotas: ${status}
+                            <div class="mt-2">
+                                <small class="text-muted">Intente de nuevo o contacte al administrador</small>
+                            </div>
+                        </div>
+                    `);
                 }
             });
         } else {
