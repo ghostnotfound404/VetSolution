@@ -1,4 +1,3 @@
-// JavaScript específico para el módulo de mascotas
 $(document).ready(function() {
     // Configurar fecha máxima para fecha de nacimiento (hoy)
     const today = new Date().toISOString().split('T')[0];
@@ -204,21 +203,4 @@ function editarMascota(id) {
 function verHistoria(id) {
     // TODO: Redirigir a historia clínica
     alert(`Ver historia clínica de mascota ID: ${id}\n(Funcionalidad por implementar)`);
-}
-
-// Función para calcular edad aproximada
-function calcularEdad(fechaNacimiento) {
-    const hoy = new Date();
-    const nacimiento = new Date(fechaNacimiento);
-    const diferencia = hoy - nacimiento;
-    const años = Math.floor(diferencia / (1000 * 60 * 60 * 24 * 365.25));
-    const meses = Math.floor((diferencia % (1000 * 60 * 60 * 24 * 365.25)) / (1000 * 60 * 60 * 24 * 30.44));
-    
-    if (años > 0) {
-        return `${años} año${años > 1 ? 's' : ''}`;
-    } else if (meses > 0) {
-        return `${meses} mes${meses > 1 ? 'es' : ''}`;
-    } else {
-        return 'Menos de 1 mes';
-    }
 }

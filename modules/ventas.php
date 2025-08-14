@@ -1164,7 +1164,7 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
         window.imprimirTicket = function(id) {
             Swal.fire({
                 title: '¿Imprimir Ticket?',
-                text: 'Se imprimirá el ticket de la venta #' + id,
+                text: 'Se imprimirá el ticket de la venta',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: '<i class="fas fa-print"></i> Imprimir',

@@ -1,4 +1,9 @@
 <?php
+// Mostrar todos los errores para depuración
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 include('../includes/config.php');
 
 // Verificar que se ha recibido el ID del producto
@@ -28,6 +33,10 @@ $stmt->close();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Configurar cabecera para respuestas JSON
     header('Content-Type: application/json');
+    
+    // Registrar información de depuración
+    error_log("Recibida solicitud POST en editar_producto.php");
+    error_log("Datos POST recibidos: " . print_r($_POST, true));
     
     try {
         // Verificar si se recibió el ID del producto del formulario
@@ -72,23 +81,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $update_stmt->bind_param("sdii", $nombre, $precio, $stock, $id_producto);
             
-            if ($update_stmt->execute()) {
+            // Ejecutar la consulta
+            $resultado = $update_stmt->execute();
+            
+            // Guardar error antes de cerrar el statement
+            $error_mensaje = $update_stmt->error;
+            $affected_rows = $update_stmt->affected_rows;
+            
+            $update_stmt->close();
+            
+            if ($resultado) {
+                error_log("Producto actualizado. ID: $id_producto, Filas afectadas: $affected_rows");
+                
                 echo json_encode([
                     'success' => true, 
                     'message' => 'Producto actualizado correctamente',
-                    'id_producto' => $id_producto
+                    'id_producto' => $id_producto,
+                    'affected_rows' => $affected_rows
                 ]);
             } else {
-                throw new Exception('Error en la ejecución: ' . $update_stmt->error);
+                error_log("Error al actualizar producto: " . $error_mensaje);
+                throw new Exception('Error en la ejecución: ' . $error_mensaje);
             }
-            
-            $update_stmt->close();
             
         } else {
             throw new Exception('Todos los campos obligatorios deben ser completados');
         }
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        error_log("Excepción en editar_producto.php: " . $e->getMessage());
+        echo json_encode([
+            'success' => false, 
+            'message' => $e->getMessage(),
+            'debug_info' => 'Revisa los logs del servidor para más detalles'
+        ]);
     }
     exit();
 }
@@ -197,90 +222,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script>
 $(document).ready(function() {
-    // Validación del formulario de edición
-    $('#formEditarProducto').validate({
-        rules: {
-            nombre: {
-                required: true,
-                minlength: 3
-            },
-            precio: {
-                required: true,
-                number: true,
-                min: 0.01
-            },
-            stock: {
-                required: true,
-                digits: true,
-                min: 0
-            }
-        },
-        messages: {
-            nombre: {
-                required: "Por favor ingresa el nombre del producto",
-                minlength: "El nombre debe tener al menos 3 caracteres"
-            },
-            precio: {
-                required: "Por favor ingresa el precio del producto",
-                number: "El precio debe ser un número válido",
-                min: "El precio debe ser mayor a 0"
-            },
-            stock: {
-                required: "Por favor ingresa la cantidad en stock",
-                digits: "El stock debe ser un número entero",
-                min: "El stock no puede ser negativo"
-            }
-        },
-        errorElement: 'span',
-        errorPlacement: function (error, element) {
-            error.addClass('invalid-feedback');
-            element.closest('.form-group').append(error);
-        },
-        highlight: function (element, errorClass, validClass) {
-            $(element).addClass('is-invalid');
-        },
-        unhighlight: function (element, errorClass, validClass) {
-            $(element).removeClass('is-invalid');
+    // Función para validar el formulario manualmente
+    function validarFormulario() {
+        var isValid = true;
+        var nombre = $('#nombre_editar').val().trim();
+        var precio = $('#precio_editar').val();
+        var stock = $('#stock_editar').val();
+        
+        // Restablecer todos los estados de validación
+        $('.is-invalid').removeClass('is-invalid');
+        $('.invalid-feedback').remove();
+        
+        // Validar nombre
+        if (!nombre || nombre.length < 3) {
+            $('#nombre_editar').addClass('is-invalid');
+            $('#nombre_editar').closest('.form-group').append('<div class="invalid-feedback">El nombre debe tener al menos 3 caracteres</div>');
+            isValid = false;
         }
-    });
+        
+        // Validar precio
+        if (!precio || isNaN(parseFloat(precio)) || parseFloat(precio) <= 0) {
+            $('#precio_editar').addClass('is-invalid');
+            $('#precio_editar').closest('.form-group').append('<div class="invalid-feedback">Ingrese un precio válido mayor a 0</div>');
+            isValid = false;
+        }
+        
+        // Validar stock
+        if (!stock || isNaN(parseInt(stock)) || parseInt(stock) < 0) {
+            $('#stock_editar').addClass('is-invalid');
+            $('#stock_editar').closest('.form-group').append('<div class="invalid-feedback">Ingrese una cantidad válida no negativa</div>');
+            isValid = false;
+        }
+        
+        return isValid;
+    }
     
     // Enviar formulario de edición
     $('#btnGuardarEdicionProducto').on('click', function() {
-        if ($('#formEditarProducto').valid()) {
+        console.log("Botón Guardar Edición Producto clickeado");
+        
+        if (validarFormulario()) {
+            // Construir la URL correcta para la solicitud AJAX
+            // Usamos la URL específica para editar el producto
+            var id_producto = $('#formEditarProducto input[name="id_producto"]').val();
+            var correctUrl = 'modules/editar_producto.php?id=' + id_producto;
+            var formData = $('#formEditarProducto').serialize();
+            
+            console.log("Enviando datos a URL:", correctUrl);
+            console.log("Datos del formulario:", formData);
+            
+            // Mostrar indicador de carga
+            $('#btnGuardarEdicionProducto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Guardando...');
+            
             $.ajax({
-                url: 'modules/editar_producto.php',
+                url: correctUrl,
                 method: 'POST',
-                data: $('#formEditarProducto').serialize(),
+                data: formData,
                 dataType: 'json',
                 success: function(response) {
+                    // Restaurar el botón
+                    $('#btnGuardarEdicionProducto').prop('disabled', false).html('<i class="fas fa-save me-1"></i> <span class="d-none d-sm-inline">Guardar Cambios</span><span class="d-inline d-sm-none">Guardar</span>');
+                    
                     if (response.success) {
                         $('#editarProductoModal').modal('hide');
                         
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Producto actualizado!',
-                            text: response.message,
-                            confirmButtonColor: '#28a745'
-                        }).then(() => {
-                            // Recargar la página para ver los cambios
+                        // Verificar si SweetAlert está disponible
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Producto actualizado!',
+                                text: response.message,
+                                confirmButtonColor: '#28a745'
+                            }).then(() => {
+                                // Recargar la página para ver los cambios
+                                location.reload();
+                            });
+                        } else {
+                            alert("Producto actualizado correctamente");
                             location.reload();
-                        });
+                        }
                     } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: response.message || 'No se pudo actualizar el producto',
-                            confirmButtonColor: '#dc3545'
-                        });
+                        // Verificar si SweetAlert está disponible
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.message || 'No se pudo actualizar el producto',
+                                confirmButtonColor: '#dc3545'
+                            });
+                        } else {
+                            alert("Error: " + (response.message || 'No se pudo actualizar el producto'));
+                        }
                     }
                 },
-                error: function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Ocurrió un error al procesar la solicitud',
-                        confirmButtonColor: '#dc3545'
-                    });
+                error: function(xhr, status, error) {
+                    // Restaurar el botón
+                    $('#btnGuardarEdicionProducto').prop('disabled', false).html('<i class="fas fa-save me-1"></i> <span class="d-none d-sm-inline">Guardar Cambios</span><span class="d-inline d-sm-none">Guardar</span>');
+                    
+                    console.error("Error en AJAX:");
+                    console.error("Status:", status);
+                    console.error("Error:", error);
+                    console.error("Respuesta:", xhr.responseText);
+                    
+                    // Intentar mostrar información más detallada
+                    var errorMessage = "Error al procesar la solicitud.";
+                    
+                    try {
+                        // Intentar analizar la respuesta como JSON
+                        var jsonResponse = JSON.parse(xhr.responseText);
+                        if (jsonResponse && jsonResponse.message) {
+                            errorMessage = jsonResponse.message;
+                        }
+                    } catch (e) {
+                        // Si no es JSON, verificar si tiene un mensaje de error HTML
+                        if (xhr.responseText && xhr.responseText.indexOf('error') > -1) {
+                            errorMessage += " Por favor revisa la consola para más detalles.";
+                        }
+                    }
+                    
+                    // Verificar si SweetAlert está disponible
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error en la solicitud',
+                            text: errorMessage,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    } else {
+                        alert("Error en la solicitud: " + errorMessage);
+                    }
                 }
             });
         }

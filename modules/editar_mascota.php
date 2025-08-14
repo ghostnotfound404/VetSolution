@@ -42,17 +42,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_mascota = intval($_POST['id_mascota']);
         
         // Validar que todos los campos requeridos estén presentes
-        if (isset($_POST['id_cliente']) && isset($_POST['nombre']) && 
-            isset($_POST['fecha_nacimiento']) && isset($_POST['especie']) && isset($_POST['genero'])) {
-            
-            $id_cliente = intval($_POST['id_cliente']);
-            $nombre = trim($_POST['nombre']);
-            $fecha_nacimiento = $_POST['fecha_nacimiento'];
-            $especie = $_POST['especie'];
-            $raza = isset($_POST['raza']) && !empty($_POST['raza']) ? $_POST['raza'] : 'Mestizo';
-            $genero = $_POST['genero'];
-            $esterilizado = isset($_POST['esterilizado']) ? $_POST['esterilizado'] : 'No';
-            $estado = isset($_POST['estado']) ? $_POST['estado'] : 'Activo';
+        if (!isset($_POST['id_cliente']) || empty($_POST['id_cliente'])) {
+            throw new Exception('Debe seleccionar un propietario');
+        }
+        
+        if (!isset($_POST['nombre']) || empty(trim($_POST['nombre']))) {
+            throw new Exception('El nombre de la mascota es obligatorio');
+        }
+        
+        if (!isset($_POST['fecha_nacimiento']) || empty($_POST['fecha_nacimiento'])) {
+            throw new Exception('La fecha de nacimiento es obligatoria');
+        }
+        
+        if (!isset($_POST['especie']) || empty($_POST['especie'])) {
+            throw new Exception('Debe seleccionar una especie');
+        }
+        
+        if (!isset($_POST['genero']) || empty($_POST['genero'])) {
+            throw new Exception('Debe seleccionar un género');
+        }
+        
+        // Procesar los datos del formulario
+        $id_cliente = intval($_POST['id_cliente']);
+        $nombre = trim($_POST['nombre']);
+        $fecha_nacimiento = $_POST['fecha_nacimiento'];
+        $especie = $_POST['especie'];
+        $raza = isset($_POST['raza']) && !empty($_POST['raza']) ? $_POST['raza'] : 'Mestizo';
+        $genero = $_POST['genero'];
+        $esterilizado = isset($_POST['esterilizado']) ? $_POST['esterilizado'] : 'No';
+        $estado = isset($_POST['estado']) ? $_POST['estado'] : 'Activo';
         
         // Actualizar los datos de la mascota
         $update_query = "UPDATE mascotas SET 
@@ -66,44 +84,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         estado = ?
                         WHERE id_mascota = ?";
         
-        try {
-            // Debug - mostrar valores que se actualizarán
-            error_log("Actualizando mascota $id_mascota: Cliente=$id_cliente, Nombre=$nombre, Especie=$especie");
-            
-            $update_stmt = $conn->prepare($update_query);
-            if ($update_stmt === false) {
-                throw new Exception('Error en la preparación de la consulta: ' . $conn->error);
-            }
-            
-            // El tipo "i" para entero, "s" para string, hay 9 parámetros en total
-            if (!$update_stmt->bind_param("isssssssi", $id_cliente, $nombre, $fecha_nacimiento, 
-                                      $especie, $raza, $genero, $esterilizado, $estado, $id_mascota)) {
-                throw new Exception('Error al vincular parámetros: ' . $update_stmt->error);
-            }
-            
-            if ($update_stmt->execute()) {
-                echo json_encode([
-                    'success' => true, 
-                    'message' => 'Mascota actualizada correctamente',
-                    'id_mascota' => $id_mascota
-                ]);
-            } else {
-                throw new Exception('Error en la ejecución: ' . $update_stmt->error);
-            }
-            
-            $update_stmt->close();
-            
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false, 
-                'message' => 'Error al actualizar la mascota: ' . $e->getMessage()
-            ]);
+        // Debug - mostrar valores que se actualizarán
+        error_log("Actualizando mascota $id_mascota: Cliente=$id_cliente, Nombre=$nombre, Especie=$especie");
+        
+        $update_stmt = $conn->prepare($update_query);
+        if ($update_stmt === false) {
+            throw new Exception('Error en la preparación de la consulta: ' . $conn->error);
         }
-    } else {
-        throw new Exception('Todos los campos obligatorios deben ser completados');
-    }
+        
+        // El tipo "i" para entero, "s" para string, hay 9 parámetros en total
+        if (!$update_stmt->bind_param("isssssssi", $id_cliente, $nombre, $fecha_nacimiento, 
+                                  $especie, $raza, $genero, $esterilizado, $estado, $id_mascota)) {
+            throw new Exception('Error al vincular parámetros: ' . $update_stmt->error);
+        }
+        
+        if ($update_stmt->execute()) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Mascota actualizada correctamente',
+                'id_mascota' => $id_mascota
+            ]);
+            exit();
+        } else {
+            throw new Exception('Error en la ejecución: ' . $update_stmt->error);
+        }
+        
+        $update_stmt->close();
+        
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Error al actualizar la mascota: ' . $e->getMessage()
+        ]);
+        exit();
     }
 }
 ?>
@@ -245,6 +258,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
         </div>
+        
+        <!-- Botones de acción -->
+        <div class="row mt-4">
+            <div class="col-12 text-end">
+                <a href="?page=mascotas" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left me-1"></i> Volver
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
 </form>
 
 <script>
@@ -324,7 +349,7 @@ $(document).ready(function() {
         $submitBtn.html('<i class="fas fa-spinner fa-spin me-1"></i> Guardando...').prop('disabled', true);
         
         $.ajax({
-            url: 'modules/editar_mascota.php',
+            url: window.location.href, // Usar la URL actual
             method: 'POST',
             data: $(this).serialize(),
             dataType: 'json',
@@ -347,9 +372,8 @@ $(document).ready(function() {
                             popup: 'swal-responsive'
                         }
                     }).then(() => {
-                        // Cerrar modal y recargar la página
-                        $('#editarMascotaModal').modal('hide');
-                        location.reload();
+                        // Redirigir a la página de mascotas
+                        window.location.href = '?page=mascotas';
                     });
                 } else {
                     // Mostrar error
@@ -379,6 +403,11 @@ $(document).ready(function() {
                     errorMessage = 'Error interno del servidor.';
                 } else if (xhr.status === 404) {
                     errorMessage = 'Recurso no encontrado.';
+                } else if (status === 'parsererror') {
+                    errorMessage = 'Error al procesar la respuesta del servidor. Respuesta no válida.';
+                    // Mostrar la respuesta recibida para depuración
+                    console.error("Error en la solicitud AJAX:", status, error);
+                    console.error("Respuesta del servidor:", xhr.responseText);
                 }
                 
                 Swal.fire({

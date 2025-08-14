@@ -32,6 +32,10 @@ $joins = "LEFT JOIN mascotas m ON v.id_mascota = m.id_mascota
           LEFT JOIN productos p ON v.tipo_item = 'producto' AND v.id_item = p.id_producto
           LEFT JOIN servicios s ON v.tipo_item = 'servicio' AND v.id_item = s.id_servicio";
 
+// Verificamos si la columna tipo_negocio existe
+$result = $conn->query("SHOW COLUMNS FROM ventas LIKE 'tipo_negocio'");
+$column_exists = ($result->num_rows > 0);
+
 $select = "v.id_venta, v.fecha_venta as fecha, v.subtotal, v.medio_pago,
            m.nombre as nombre_mascota,
            CONCAT(c.nombre, ' ', c.apellido) as nombre_cliente,
@@ -40,6 +44,20 @@ $select = "v.id_venta, v.fecha_venta as fecha, v.subtotal, v.medio_pago,
                WHEN v.tipo_item = 'servicio' THEN s.nombre 
            END as item_nombre,
            v.tipo_item, v.cantidad, v.precio_unitario";
+
+// Solo añadimos la columna tipo_negocio al select si existe en la tabla
+if ($column_exists) {
+    $select .= ", IFNULL(v.tipo_negocio, 'clinica') as tipo_negocio";
+} else {
+    $select .= ", 'clinica' as tipo_negocio";
+    
+    // Mostrar mensaje de advertencia para actualizar la base de datos
+    echo '<div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <strong>¡Atención!</strong> Es necesario actualizar la estructura de la base de datos. 
+            <a href="install/update_ventas_table.php" class="alert-link">Haga clic aquí para actualizar</a>.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>';
+};
 
 // Si hay búsqueda, usar searchWithPagination
 if (!empty($buscar)) {
@@ -65,11 +83,40 @@ if (!empty($buscar)) {
 $ventas = $ventasData['data'];
 $paginationInfo = $ventasData['pagination'];
 
-// Obtener estadísticas
-$total_ventas = $conn->query("SELECT COUNT(*) as total FROM ventas")->fetch_assoc()['total'];
-$ventas_hoy = $conn->query("SELECT COUNT(*) as total FROM ventas WHERE DATE(fecha_venta) = CURDATE()")->fetch_assoc()['total'];
-$ingresos_hoy = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM ventas WHERE DATE(fecha_venta) = CURDATE()")->fetch_assoc()['total'];
-$total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM ventas")->fetch_assoc()['total'];
+// Obtener ingresos por medio de pago (solo necesitamos efectivo para calcular el total en caja)
+$ingresos_efectivo = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM ventas WHERE medio_pago = 'Efectivo'")->fetch_assoc()['total'];
+
+// Obtener total de egresos
+$total_egresos = $conn->query("SELECT COALESCE(SUM(monto), 0) as total FROM egresos")->fetch_assoc()['total'];
+
+// Calcular total en caja (ingresos en efectivo - egresos)
+$total_caja = $ingresos_efectivo - $total_egresos;
+
+// Verificar si hay un valor guardado para el total en caja
+$sql_total_caja = "SELECT valor FROM configuracion WHERE clave = 'total_caja' LIMIT 1";
+$result_total_caja = $conn->query($sql_total_caja);
+$valor_guardado = 0;
+
+if ($result_total_caja->num_rows > 0) {
+    $valor_guardado = floatval($result_total_caja->fetch_assoc()['valor']);
+} else {
+    // Si no existe, crear el registro
+    $sql = "INSERT INTO configuracion (clave, valor) VALUES ('total_caja', '0')";
+    $conn->query($sql);
+}
+
+// Procesar actualización de valor
+if (isset($_POST['actualizar_total_caja'])) {
+    $nuevo_valor = floatval($_POST['nuevo_total_caja']);
+    $sql_update = "UPDATE configuracion SET valor = '$nuevo_valor' WHERE clave = 'total_caja'";
+    
+    if ($conn->query($sql_update) === TRUE) {
+        $valor_guardado = $nuevo_valor;
+        echo '<div class="alert alert-success" role="alert">Total en caja actualizado correctamente.</div>';
+    } else {
+        echo '<div class="alert alert-danger" role="alert">Error al actualizar el valor: ' . $conn->error . '</div>';
+    }
+}
 ?>
 
 <div class="container-fluid px-4">
@@ -80,66 +127,74 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
         <h2 class="mb-0"><i class="fas fa-cash-register me-2"></i>Reporte de Caja</h2>
     </div>
 
-    <!-- Tarjetas de Resumen -->
+    <!-- Tarjeta de Total en Caja -->
     <div class="row mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-primary text-white mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Total Ventas</h6>
-                            <h4 class="mb-0"><?php echo $total_ventas; ?></h4>
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="card-title mb-3"><i class="fas fa-cash-register me-2 text-danger"></i>Total en Caja</h5>
+                            <div class="mb-3">
+                                <span class="text-muted">Valor actual:</span>
+                                <h3 class="mb-0">S/ <?php echo number_format($valor_guardado, 2); ?></h3>
+                                <small class="text-muted">Último valor establecido manualmente</small>
+                            </div>
+                            <div class="mt-3">
+                                <form method="POST" class="row g-2">
+                                    <div class="col-md-8">
+                                        <div class="input-group">
+                                            <span class="input-group-text">S/</span>
+                                            <input type="number" class="form-control" name="nuevo_total_caja" step="0.01" min="0" placeholder="Nuevo valor" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button type="submit" class="btn btn-primary w-100" name="actualizar_total_caja">Actualizar</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                        <i class="fas fa-shopping-cart fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Ventas Hoy</h6>
-                            <h4 class="mb-0"><?php echo $ventas_hoy; ?></h4>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="fas fa-calculator me-2"></i>Cálculo Automático</h6>
+                                    <p class="card-text mb-2">Basado en transacciones registradas:</p>
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">Efectivo:</small>
+                                            <div class="fw-bold">S/ <?php echo number_format($ingresos_efectivo, 2); ?></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">Egresos:</small>
+                                            <div class="fw-bold">S/ <?php echo number_format($total_egresos, 2); ?></div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Total calculado:</span>
+                                        <h5 class="mb-0">S/ <?php echo number_format($total_caja, 2); ?></h5>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <i class="fas fa-chart-line fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-info text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Ingresos Hoy</h6>
-                            <h4 class="mb-0">S/ <?php echo number_format($ingresos_hoy, 2); ?></h4>
-                        </div>
-                        <i class="fas fa-coins fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Total Ingresos</h6>
-                            <h4 class="mb-0">S/ <?php echo number_format($total_ingresos, 2); ?></h4>
-                        </div>
-                        <i class="fas fa-money-bill-wave fa-2x"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Búsqueda y Filtros -->
+    <!-- Búsqueda, Filtros y Exportación -->
     <div class="card mb-4">
-        <div class="card-header bg-white">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-search me-2"></i>Buscar Ventas</h5>
+            <div>
+                <button type="button" class="btn btn-danger me-2" id="btnCuadrarCaja">
+                    <i class="fas fa-balance-scale me-2"></i> Cuadrar Caja
+                </button>
+                <button type="button" class="btn btn-warning" id="btnCerrarCaja">
+                    <i class="fas fa-door-closed me-2"></i> Cerrar Caja
+                </button>
+            </div>
         </div>
         <div class="card-body">
             <form method="GET" class="row g-3">
@@ -181,6 +236,7 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                         <tr>
                             <th>Fecha</th>
                             <th>Cliente / Mascota</th>
+                            <th>Tipo</th>
                             <th>Item</th>
                             <th>Cantidad</th>
                             <th>Subtotal</th>
@@ -205,6 +261,14 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                                     ?>
                                 </td>
                                 <td>
+                                    <span class="badge bg-<?php 
+                                        echo $row['tipo_negocio'] == 'clinica' ? 'purple' : 
+                                             ($row['tipo_negocio'] == 'farmacia' ? 'dark' : 'secondary'); 
+                                    ?>">
+                                        <?php echo ucfirst($row['tipo_negocio']); ?>
+                                    </span>
+                                </td>
+                                <td>
                                     <?php echo htmlspecialchars($row['item_nombre']); ?>
                                     <br><small class="text-muted"><?php echo ucfirst($row['tipo_item']); ?></small>
                                 </td>
@@ -213,7 +277,8 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
                                 <td>
                                     <span class="badge bg-<?php 
                                         echo $row['medio_pago'] == 'Efectivo' ? 'success' : 
-                                             ($row['medio_pago'] == 'Tarjeta' ? 'primary' : 'warning'); 
+                                            ($row['medio_pago'] == 'Tarjeta' ? 'primary' : 
+                                            ($row['medio_pago'] == 'Yape' ? 'danger' : 'warning')); 
                                     ?>">
                                         <?php echo htmlspecialchars($row['medio_pago']); ?>
                                     </span>
@@ -239,9 +304,201 @@ $total_ingresos = $conn->query("SELECT COALESCE(SUM(subtotal), 0) as total FROM 
     </div>
 </div>
 
+<style>
+/* Estilos personalizados para la caja */
+.bg-purple {
+    background-color: #9b59b6 !important;
+}
+.text-purple {
+    color: #9b59b6 !important;
+}
+.modal-confirm .modal-content {
+    padding: 20px;
+    border-radius: 5px;
+    border: none;
+}
+.modal-confirm .modal-header {
+    border-bottom: none;
+    position: relative;
+    text-align: center;
+    margin: -20px -20px 0;
+    border-radius: 5px 5px 0 0;
+    padding: 35px;
+}
+.modal-confirm .modal-header.bg-danger {
+    background-color: #dc3545;
+}
+.modal-confirm h4 {
+    text-align: center;
+    font-size: 26px;
+    margin: 30px 0 -15px;
+}
+.modal-confirm .form-control, .modal-confirm .btn {
+    min-height: 40px;
+    border-radius: 3px; 
+}
+.modal-confirm .close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    color: #fff;
+    text-shadow: none;
+    opacity: 0.5;
+}
+.modal-confirm .close:hover {
+    opacity: 0.8;
+}
+.modal-confirm .btn {
+    color: #fff;
+    border-radius: 4px;
+    background: #82ce34;
+    text-decoration: none;
+    transition: all 0.4s;
+    line-height: normal;
+    padding: 6px 20px;
+    margin: 0 5px;
+    min-width: 120px;
+    border: none;
+}
+.modal-confirm .btn-secondary {
+    background: #c1c1c1;
+}
+.modal-confirm .btn-secondary:hover, .modal-confirm .btn-secondary:focus {
+    background: #a8a8a8;
+}
+.modal-confirm .btn-danger {
+    background: #dc3545;
+}
+.modal-confirm .btn-danger:hover, .modal-confirm .btn-danger:focus {
+    background: #bb2d3b;
+}
+</style>
+
+<!-- Modal para generar el reporte de caja -->
+<div class="modal fade" id="modalCuadrarCaja" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-invoice me-2"></i>Generar Reporte de Caja</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Seleccione las opciones para generar el reporte de caja:</p>
+                <form id="formCuadrarCaja">
+                    <div class="mb-3">
+                        <label class="form-label">Formato de exportación</label>
+                        <select class="form-select" id="formatoExportacion">
+                            <option value="excel">Excel</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Incluir en el reporte</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="incluirDetalles" checked>
+                            <label class="form-check-label" for="incluirDetalles">Detalles de transacciones</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="incluirResumen" checked>
+                            <label class="form-check-label" for="incluirResumen">Resumen por tipo de negocio</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="incluirMediosPago" checked>
+                            <label class="form-check-label" for="incluirMediosPago">Resumen por medios de pago</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGenerarReporte">Generar Reporte</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cerrar caja -->
+<div class="modal fade modal-confirm" id="modalCerrarCaja" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <div class="icon-box">
+                    <i class="fas fa-exclamation-triangle fa-3x text-white"></i>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <h4>¿Estás seguro?</h4>
+                <p class="text-danger">¡Atención! Estás a punto de eliminar todas las transacciones del apartado de caja.</p>
+                <p class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i> Recuerda descargar tu cierre de caja ya que no se podrá recuperar.
+                </p>
+                <div class="mt-4">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmarCerrarCaja">Sí, Cerrar Caja</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function limpiarFiltros() {
     window.location.href = 'index.php#/caja';
 }
-</script>
+
+// Inicializar los modales
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal de Cuadrar Caja
+    const modalCuadrarCaja = new bootstrap.Modal(document.getElementById('modalCuadrarCaja'));
+    document.getElementById('btnCuadrarCaja').addEventListener('click', function() {
+        modalCuadrarCaja.show();
+    });
+    
+    // Modal de Cerrar Caja
+    const modalCerrarCaja = new bootstrap.Modal(document.getElementById('modalCerrarCaja'));
+    document.getElementById('btnCerrarCaja').addEventListener('click', function() {
+        modalCerrarCaja.show();
+    });
+    
+    // Generar reporte
+    document.getElementById('btnGenerarReporte').addEventListener('click', function() {
+        // Construir URL con parámetros de exportación
+        const formato = document.getElementById('formatoExportacion').value;
+        const incluirDetalles = document.getElementById('incluirDetalles').checked;
+        const incluirResumen = document.getElementById('incluirResumen').checked;
+        const incluirMediosPago = document.getElementById('incluirMediosPago').checked;
+        
+        const url = `modules/exportar_caja.php?formato=${formato}&detalles=${incluirDetalles ? '1' : '0'}&resumen=${incluirResumen ? '1' : '0'}&medios_pago=${incluirMediosPago ? '1' : '0'}`;
+        
+        // Abrir en nueva pestaña
+        window.open(url, '_blank');
+        
+        // Cerrar modal
+        modalCuadrarCaja.hide();
+    });
+    
+    // Confirmar cierre de caja
+    document.getElementById('btnConfirmarCerrarCaja').addEventListener('click', function() {
+        // Hacer petición AJAX para cerrar la caja
+        fetch('modules/cerrar_caja.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                // Recargar la página
+                window.location.reload();
+            } else {
+                alert('Error al cerrar la caja: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cerrar la caja. Por favor, inténtelo de nuevo.');
+        });
+    });
+});
 </script>
