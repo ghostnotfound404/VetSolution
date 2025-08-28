@@ -301,6 +301,7 @@ $stmt_historiales->close();
                 <form id="formHistoriaClinica" action="modules/historia_clinica.php?id_mascota=<?php echo $id_mascota; ?>" method="post">
                     <input type="hidden" name="crear_historia" value="1">
                     <input type="hidden" name="id_mascota" value="<?php echo $id_mascota; ?>">
+                    <input type="hidden" name="url_format" value="#/mascotas/historia/<?php echo $id_mascota; ?>">
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -389,6 +390,16 @@ $stmt_historiales->close();
 </div>
 
 <script>
+// Función para extraer el ID de la mascota de la URL con formato #/mascotas/historia/ID
+function getMascotaIdFromUrl() {
+    const hash = window.location.hash;
+    if (hash && hash.includes('/mascotas/historia/')) {
+        const parts = hash.split('/');
+        return parts[parts.length - 1]; // Obtener el último segmento de la URL
+    }
+    return null;
+}
+
 $(document).ready(function() {
     // Manejar envío del formulario de nueva historia
     $('#formHistoriaClinica').on('submit', function(e) {
@@ -401,8 +412,10 @@ $(document).ready(function() {
         
         const formData = new FormData(this);
         
-        // Agregar la URL actual para poder redireccionar de vuelta
-        formData.append('current_url', window.location.href);
+        // Agregar la URL en el formato correcto para poder redireccionar de vuelta
+        const id_mascota = <?php echo $id_mascota; ?>;
+        const mascotaUrl = '#/mascotas/historia/' + id_mascota;
+        formData.append('current_url', mascotaUrl);
         
         $.ajax({
             url: $(this).attr('action'),
@@ -429,8 +442,31 @@ $(document).ready(function() {
                         text: 'Historia clínica guardada correctamente',
                         confirmButtonColor: '#198754'
                     }).then(() => {
-                        // Recargar la página actual manteniendo la URL exactamente igual
-                        window.location.reload();
+                        // Recargar solo el contenido de la historia clínica sin recargar toda la página
+                        const id_mascota = <?php echo $id_mascota; ?>;
+                        
+                        // Recargar el contenido de forma directa
+                        $.ajax({
+                            url: 'modules/historia_clinica.php?id_mascota=' + id_mascota,
+                            method: 'GET',
+                            success: function(response) {
+                                $("#contenido").html(response);
+                                
+                                // Asegurar que la URL es la correcta
+                                const newUrl = '#/mascotas/historia/' + id_mascota;
+                                if (window.location.hash !== newUrl) {
+                                    window.history.pushState({mascotaId: id_mascota}, '', newUrl);
+                                }
+                            },
+                            error: function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Error al recargar la historia clínica',
+                                    confirmButtonColor: '#dc3545'
+                                });
+                            }
+                        });
                     });
                 } else {
                     Swal.fire({
@@ -462,7 +498,30 @@ $(document).ready(function() {
                 }).then(() => {
                     // En caso de error, intentamos recargar la página de todos modos
                     // ya que es posible que la historia se haya guardado correctamente
-                    window.location.reload();
+                    const id_mascota = <?php echo $id_mascota; ?>;
+                    
+                    // Recargar el contenido de forma directa
+                    $.ajax({
+                        url: 'modules/historia_clinica.php?id_mascota=' + id_mascota,
+                        method: 'GET',
+                        success: function(response) {
+                            $("#contenido").html(response);
+                            
+                            // Asegurar que la URL es la correcta
+                            const newUrl = '#/mascotas/historia/' + id_mascota;
+                            if (window.location.hash !== newUrl) {
+                                window.history.pushState({mascotaId: id_mascota}, '', newUrl);
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error al recargar la historia clínica',
+                                confirmButtonColor: '#dc3545'
+                            });
+                        }
+                    });
                 });
             }
         });
@@ -470,6 +529,13 @@ $(document).ready(function() {
 });
 
 function editarHistoria(id) {
+    // Asegurarnos que la URL está en el formato correcto
+    const id_mascota = <?php echo $id_mascota; ?>;
+    const newUrl = '#/mascotas/historia/' + id_mascota;
+    if (window.location.hash !== newUrl) {
+        window.history.pushState(null, '', newUrl);
+    }
+    
     $.ajax({
         url: 'modules/editar_historia.php?id=' + id + '&id_mascota=<?php echo $id_mascota; ?>',
         method: 'GET',
@@ -482,4 +548,17 @@ function editarHistoria(id) {
         }
     });
 }
+
+// Actualizar la URL al cargar la historia clínica
+$(document).ready(function() {
+    // Actualiza la URL para reflejar el formato esperado
+    const id_mascota = <?php echo $id_mascota; ?>;
+    const newUrl = '#/mascotas/historia/' + id_mascota;
+    
+    // Cambiar la URL sin recargar la página completamente
+    // Solo si estamos en una URL diferente y no estamos en un iframe o carga parcial
+    if (window.location.hash !== newUrl && window.top === window.self) {
+        window.history.pushState({mascotaId: id_mascota}, '', newUrl);
+    }
+});
 </script>

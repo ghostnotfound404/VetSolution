@@ -92,6 +92,32 @@
 
     <script>
         $(document).ready(function() {
+            // Función para cargar historia clínica
+            function cargarHistoriaClinica(mascotaId) {
+                $(".nav-link").removeClass("active");
+                $("#mascotas").addClass("active");
+                
+                // Cerrar menú en móviles después de seleccionar
+                if($(window).width() < 768) {
+                    $('#sidebarMenu').collapse('hide');
+                }
+                
+                // Cargar el contenido correspondiente
+                var contenidoDiv = $("#contenido");
+                contenidoDiv.html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Cargando historia clínica...</p></div>');
+                
+                $.ajax({
+                    url: 'modules/historia_clinica.php?id_mascota=' + mascotaId,
+                    method: 'GET',
+                    success: function(response) {
+                        contenidoDiv.html(response);
+                    },
+                    error: function() {
+                        contenidoDiv.html('<div class="alert alert-danger">Error al cargar la historia clínica</div>');
+                    }
+                });
+            }
+            
             // Función para cargar el contenido dinámicamente
             function cargarContenido(page) {
                 $(".nav-link").removeClass("active");
@@ -296,18 +322,34 @@
             });
 
             // Manejo de la URL al cargar la página
-            var path = window.location.hash.replace("#/", "");
-            if (path) {
-                cargarContenido(path);
+            var hash = window.location.hash;
+            if (hash) {
+                // Comprobar si es una URL de historia clínica con formato /mascotas/historia/ID
+                if (hash.includes('/mascotas/historia/')) {
+                    var parts = hash.split('/');
+                    var mascotaId = parts[parts.length - 1];
+                    cargarHistoriaClinica(mascotaId);
+                } else {
+                    var path = hash.replace("#/", "");
+                    cargarContenido(path);
+                }
             } else {
                 cargarContenido("dashboard");
             }
 
             // Manejo del botón de retroceso
             $(window).on("popstate", function() {
-                var path = window.location.hash.replace("#/", "");
-                if (path) {
-                    cargarContenido(path);
+                var hash = window.location.hash;
+                if (hash) {
+                    // Comprobar si es una URL de historia clínica con formato /mascotas/historia/ID
+                    if (hash.includes('/mascotas/historia/')) {
+                        var parts = hash.split('/');
+                        var mascotaId = parts[parts.length - 1];
+                        cargarHistoriaClinica(mascotaId);
+                    } else {
+                        var path = hash.replace("#/", "");
+                        cargarContenido(path);
+                    }
                 }
             });
         });
