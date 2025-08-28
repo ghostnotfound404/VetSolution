@@ -150,100 +150,114 @@ $stmt_historiales->close();
         <h2 class="mb-0"><i class="fas fa-notes-medical me-2"></i>Historia Clínica</h2>
     </div>
 
-    <!-- Información de la Mascota -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3">
-                    <div class="bg-light rounded-circle p-3 text-center" style="width: 60px; height: 60px;">
-                        <i class="fas fa-paw text-primary fa-2x"></i>
+    <!-- Información de la Mascota (Formato Vertical) -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <!-- Tarjeta de información de la mascota -->
+            <div class="card mb-4">
+                <div class="card-body p-3">
+                    <h3 class="mb-3 text-center"><?php echo htmlspecialchars($mascota['nombre']); ?></h3>
+                    
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <div class="bg-light rounded-circle p-2 text-center" style="width: 50px; height: 50px;">
+                            <i class="fas fa-paw text-primary fa-lg"></i>
+                        </div>
                     </div>
-                </div>
-                <div class="flex-grow-1">
-                    <h4 class="mb-0"><?php echo htmlspecialchars($mascota['nombre']); ?></h4>
-                    <p class="text-muted mb-0">
-                        <strong>N° Historia Clínica:</strong> <?php echo $mascota['id_mascota']; ?> | 
-                        <strong>Especie:</strong> <?php echo strtoupper($mascota['especie']); ?> | 
-                        <strong>Raza:</strong> <?php echo htmlspecialchars($mascota['raza']); ?> | 
-                        <strong>Sexo:</strong> <?php echo strtoupper($mascota['sexo']); ?> | 
-                        <strong>¿Esterilizado?:</strong> <?php echo $mascota['esterilizado'] ? 'SÍ' : 'NO'; ?> | 
-                        <strong>Fecha de nacimiento:</strong> <?php echo date('d-m-Y', strtotime($mascota['fecha_nacimiento'])); ?> | 
-                        <strong>Edad:</strong> <?php 
+                    
+                    <div class="mb-3">
+                        <p class="mb-1"><strong>N° Historia Clínica:</strong> <?php echo $mascota['id_mascota']; ?></p>
+                        <p class="mb-1"><strong>Especie:</strong> <?php echo strtoupper($mascota['especie']); ?></p>
+                        <p class="mb-1"><strong>Raza:</strong> <?php echo htmlspecialchars($mascota['raza']); ?></p>
+                        <p class="mb-1"><strong>Sexo:</strong> <?php echo strtoupper($mascota['sexo']); ?></p>
+                        <?php if (isset($_SERVER['PHP_SELF']) && strpos($_SERVER['PHP_SELF'], 'historia_clinica.php') !== false): ?>
+                        <div class="text-warning small mb-1">Warning: Undefined array key "sexo" in C:\xampp\htdocs\VetSolution\modules\historia_clinica.php</div>
+                        <?php endif; ?>
+                        <p class="mb-1"><strong>¿Esterilizado?:</strong> <?php echo $mascota['esterilizado'] ? 'SÍ' : 'NO'; ?></p>
+                        <p class="mb-1"><strong>Fecha de nacimiento:</strong> <?php echo date('d-m-Y', strtotime($mascota['fecha_nacimiento'])); ?></p>
+                        <p class="mb-1"><strong>Edad:</strong> <?php 
                             $fecha_nac = new DateTime($mascota['fecha_nacimiento']);
                             $hoy = new DateTime();
                             $edad = $hoy->diff($fecha_nac);
                             echo $edad->y . " años y " . $edad->m . " meses"; 
-                        ?>
-                    </p>
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-user me-1"></i><strong>Propietario:</strong> 
-                        <?php echo htmlspecialchars($mascota['nombre_cliente'] . ' ' . $mascota['apellido_cliente']); ?>
-                    </p>
+                        ?></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <p class="mb-1">
+                            <i class="fab fa-whatsapp text-success me-1"></i> <strong>Propietario:</strong><br>
+                            <?php echo htmlspecialchars($mascota['nombre_cliente'] . ' ' . $mascota['apellido_cliente']); ?>
+                        </p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#nuevaConsultaModal">
+                            <i class="fas fa-plus-circle me-1"></i> Nueva Consulta
+                        </button>
+                    </div>
                 </div>
-                <div class="flex-shrink-0">
-                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevaConsultaModal">
-                        <i class="fas fa-plus-circle me-1"></i> Nueva Consulta
-                    </button>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <!-- Contenedor para las tarjetas de resumen -->
+            <div class="row mb-4">
+                <div class="col-xl-6 col-md-6">
+                    <div class="card bg-primary text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase">Total Consultas</h6>
+                                    <h4 class="mb-0"><?php echo $total_consultas; ?></h4>
+                                </div>
+                                <i class="fas fa-notes-medical fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-6 col-md-6">
+                    <div class="card bg-info text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase">Consultas Este Mes</h6>
+                                    <h4 class="mb-0"><?php echo $consultas_mes; ?></h4>
+                                </div>
+                                <i class="fas fa-calendar-alt fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-6 col-md-6">
+                    <div class="card bg-success text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase">Último Peso</h6>
+                                    <h4 class="mb-0"><?php echo $ultimo_peso ? number_format($ultimo_peso, 2) . ' Kg' : 'N/A'; ?></h4>
+                                </div>
+                                <i class="fas fa-weight fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-6 col-md-6">
+                    <div class="card bg-warning text-white mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase">Última Temperatura</h6>
+                                    <h4 class="mb-0"><?php echo $ultima_temperatura ? number_format($ultima_temperatura, 1) . '°C' : 'N/A'; ?></h4>
+                                </div>
+                                <i class="fas fa-thermometer-half fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tarjetas de Resumen -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-primary text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Total Consultas</h6>
-                            <h4 class="mb-0"><?php echo $total_consultas; ?></h4>
-                        </div>
-                        <i class="fas fa-notes-medical fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-info text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Consultas Este Mes</h6>
-                            <h4 class="mb-0"><?php echo $consultas_mes; ?></h4>
-                        </div>
-                        <i class="fas fa-calendar-alt fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Último Peso</h6>
-                            <h4 class="mb-0"><?php echo $ultimo_peso ? number_format($ultimo_peso, 2) . ' Kg' : 'N/A'; ?></h4>
-                        </div>
-                        <i class="fas fa-weight fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-white mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase">Última Temperatura</h6>
-                            <h4 class="mb-0"><?php echo $ultima_temperatura ? number_format($ultima_temperatura, 1) . '°C' : 'N/A'; ?></h4>
-                        </div>
-                        <i class="fas fa-thermometer-half fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Las tarjetas de resumen ahora están integradas en la estructura vertical -->
 
     <!-- Lista de Historiales -->
     <div class="card">
