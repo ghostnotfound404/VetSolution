@@ -169,10 +169,7 @@ $stmt_historiales->close();
                         <p class="mb-1"><strong>N° Historia Clínica:</strong> <?php echo $mascota['id_mascota']; ?></p>
                         <p class="mb-1"><strong>Especie:</strong> <?php echo strtoupper($mascota['especie']); ?></p>
                         <p class="mb-1"><strong>Raza:</strong> <?php echo htmlspecialchars($mascota['raza']); ?></p>
-                        <p class="mb-1"><strong>Sexo:</strong> <?php echo strtoupper($mascota['sexo']); ?></p>
-                        <?php if (isset($_SERVER['PHP_SELF']) && strpos($_SERVER['PHP_SELF'], 'historia_clinica.php') !== false): ?>
-                        <div class="text-warning small mb-1">Warning: Undefined array key "sexo" in C:\xampp\htdocs\VetSolution\modules\historia_clinica.php</div>
-                        <?php endif; ?>
+                        <p class="mb-1"><strong>Sexo:</strong> <?php echo isset($mascota['genero']) ? strtoupper($mascota['genero']) : 'NO ESPECIFICADO'; ?></p>
                         <p class="mb-1"><strong>¿Esterilizado?:</strong> <?php echo $mascota['esterilizado'] ? 'SÍ' : 'NO'; ?></p>
                         <p class="mb-1"><strong>Fecha de nacimiento:</strong> <?php echo date('d-m-Y', strtotime($mascota['fecha_nacimiento'])); ?></p>
                         <p class="mb-1"><strong>Edad:</strong> <?php 
