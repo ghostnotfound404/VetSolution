@@ -50,11 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['crear_historia'])) {
     if (empty($errores)) {
         $conn->begin_transaction();
         try {
+            // Establecer fecha actual en zona horaria de Lima, Perú
+            $fecha_actual = date('Y-m-d H:i:s');
+            
             // Insertar historia clínica
-            $sql_insert = "INSERT INTO historia_clinica (id_mascota, motivo, anamnesis, peso, temperatura, diagnostico, observaciones) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $sql_insert = "INSERT INTO historia_clinica (id_mascota, motivo, anamnesis, peso, temperatura, diagnostico, observaciones, fecha) 
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt_insert = $conn->prepare($sql_insert);
-            $stmt_insert->bind_param("issddss", $id_mascota, $motivo_atencion, $anamnesis, $peso, $temperatura, $descripcion_caso, $examen_clinico);
+            $stmt_insert->bind_param("issddsss", $id_mascota, $motivo_atencion, $anamnesis, $peso, $temperatura, $descripcion_caso, $examen_clinico, $fecha_actual);
             $stmt_insert->execute();
             $id_historia = $conn->insert_id;
             $stmt_insert->close();
@@ -134,6 +137,9 @@ $total_consultas = $conn->query("SELECT COUNT(*) as total FROM historia_clinica 
 $consultas_mes = $conn->query("SELECT COUNT(*) as total FROM historia_clinica WHERE id_mascota = $id_mascota AND MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE())")->fetch_assoc()['total'];
 $ultimo_peso = $conn->query("SELECT peso FROM historia_clinica WHERE id_mascota = $id_mascota ORDER BY fecha DESC LIMIT 1")->fetch_assoc()['peso'] ?? 0;
 $ultima_temperatura = $conn->query("SELECT temperatura FROM historia_clinica WHERE id_mascota = $id_mascota ORDER BY fecha DESC LIMIT 1")->fetch_assoc()['temperatura'] ?? 0;
+
+// Configurar zona horaria a Lima, Perú
+date_default_timezone_set('America/Lima');
 
 // Obtener historiales existentes
 $sql_historiales = "SELECT * FROM historia_clinica WHERE id_mascota = ? ORDER BY fecha DESC";
@@ -229,7 +235,10 @@ $stmt_historiales->close();
                             <div class="d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
                                     <i class="fas fa-calendar me-2"></i>
-                                    <?php echo date('d/m/Y H:i', strtotime($historia['fecha'])); ?> - consulta
+                                    <?php 
+                                    $fecha = new DateTime($historia['fecha'], new DateTimeZone('America/Lima'));
+                                    echo $fecha->format('d/m/Y H:i'); 
+                                    ?> - consulta
                                     <?php if ($historia['motivo']): ?>
                                         <span class="text-muted">- <?php echo htmlspecialchars($historia['motivo']); ?></span>
                                     <?php endif; ?>
@@ -292,7 +301,7 @@ $stmt_historiales->close();
                         <div class="col-md-6">
                             <label class="form-label">Fecha y Hora de Atención</label>
                             <input type="text" class="form-control" value="<?php echo date('d/m/Y H:i'); ?>" readonly>
-                            <small class="text-muted">Se registra automáticamente y no se puede modificar</small>
+                            <small class="text-muted">Se registra automáticamente con la zona horaria de Lima, Perú</small>
                         </div>
                         <div class="col-md-6">
                             <label for="motivo_atencion" class="form-label">Motivo de Atención</label>
@@ -396,31 +405,40 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 $('#formHistoriaClinica').data('submitting', false);
+                
                 if (response.success) {
+                    // Ocultar el modal antes de mostrar el mensaje
                     $('#nuevaConsultaModal').modal('hide');
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Éxito!',
-                        text: response.message,
-                        confirmButtonColor: '#198754'
-                    }).then(() => {
-                        location.reload();
-                    });
+                    
+                    // Limpiar el formulario para futuras entradas
+                    $('#formHistoriaClinica')[0].reset();
+                    
+                    // Recargar la página para mostrar la nueva historia clínica
+                    // Usamos una carga AJAX para cargar solo el contenido necesario sin recargar toda la página
+                    window.location.href = 'index.php?module=historia_clinica&id_mascota=<?php echo $id_mascota; ?>';
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: response.message,
+                        text: response.message || 'Error al guardar la historia clínica',
                         confirmButtonColor: '#dc3545'
                     });
                 }
             },
-            error: function() {
+            error: function(xhr) {
                 $('#formHistoriaClinica').data('submitting', false);
+                
+                let errorMsg = 'Error al guardar la historia clínica';
+                
+                // Intentar obtener un mensaje de error más detallado si está disponible
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Error al guardar la historia clínica',
+                    text: errorMsg,
                     confirmButtonColor: '#dc3545'
                 });
             }
