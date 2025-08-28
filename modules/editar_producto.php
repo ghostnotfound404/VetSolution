@@ -46,12 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $id_producto = intval($_POST['id_producto']);
         
-        // Validar que todos los campos requeridos estén presentes
-        if (isset($_POST['nombre']) && isset($_POST['precio']) && isset($_POST['stock'])) {
+            // Validar que todos los campos requeridos estén presentes
+        if (isset($_POST['nombre']) && isset($_POST['precio']) && isset($_POST['stock']) && isset($_POST['stock_minimo']) && isset($_POST['tipo'])) {
             
             $nombre = trim($_POST['nombre']);
             $precio = floatval($_POST['precio']);
             $stock = intval($_POST['stock']);
+            $stock_minimo = intval($_POST['stock_minimo']);
+            $tipo = trim($_POST['tipo']);
+            $descripcion = isset($_POST['descripcion']) ? trim($_POST['descripcion']) : null;
             
             // Validaciones
             if (empty($nombre)) {
@@ -66,11 +69,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('El stock no puede ser negativo');
             }
             
+            if ($stock_minimo < 1) {
+                throw new Exception('El stock mínimo debe ser al menos 1');
+            }
+            
+            // Validar tipo
+            $tipos_validos = ['clinica', 'farmacia', 'petshop', 'spa'];
+            if (!in_array(strtolower($tipo), $tipos_validos)) {
+                throw new Exception('El tipo seleccionado no es válido');
+            }
+            
             // Actualizar los datos del producto
             $update_query = "UPDATE productos SET 
                             nombre = ?, 
                             precio = ?, 
-                            stock = ? 
+                            stock = ?, 
+                            stock_minimo = ?,
+                            tipo = ?, 
+                            descripcion = ?
                             WHERE id_producto = ?";
             
             $update_stmt = $conn->prepare($update_query);
@@ -79,9 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Error en la preparación de la consulta: ' . $conn->error);
             }
             
-            $update_stmt->bind_param("sdii", $nombre, $precio, $stock, $id_producto);
-            
-            // Ejecutar la consulta
+            $update_stmt->bind_param("sdiissi", $nombre, $precio, $stock, $stock_minimo, $tipo, $descripcion, $id_producto);            // Ejecutar la consulta
             $resultado = $update_stmt->execute();
             
             // Guardar error antes de cerrar el statement
@@ -187,6 +201,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
         
+        <!-- Tipo y Stock Mínimo -->
+        <div class="row g-3">
+            <div class="col-12 col-sm-6">
+                <div class="form-group mb-3">
+                    <label for="tipo_editar" class="form-label fw-semibold">
+                        <i class="fas fa-store text-primary me-1"></i>
+                        Tipo <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select" id="tipo_editar" name="tipo" required>
+                        <option value="" disabled>Seleccione un tipo...</option>
+                        <option value="clinica" <?php echo ($producto['tipo'] == 'clinica') ? 'selected' : ''; ?>>Clínica</option>
+                        <option value="farmacia" <?php echo ($producto['tipo'] == 'farmacia') ? 'selected' : ''; ?>>Farmacia</option>
+                        <option value="petshop" <?php echo ($producto['tipo'] == 'petshop') ? 'selected' : ''; ?>>PetShop</option>
+                        <option value="spa" <?php echo ($producto['tipo'] == 'spa') ? 'selected' : ''; ?>>Spa</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="col-12 col-sm-6">
+                <div class="form-group mb-3">
+                    <label for="stock_minimo_editar" class="form-label fw-semibold">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                        Stock mínimo <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light d-none d-sm-flex"><i class="fas fa-level-down-alt"></i></span>
+                        <input type="number" min="1" step="1" class="form-control" id="stock_minimo_editar" name="stock_minimo" 
+                               value="<?php echo isset($producto['stock_minimo']) ? $producto['stock_minimo'] : 2; ?>" 
+                               placeholder="2" required>
+                        <span class="input-group-text bg-light text-muted small">unid.</span>
+                    </div>
+                    <div class="form-text text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Nivel mínimo para alertas de stock bajo
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Información del Stock Actual -->
         <div class="row">
             <div class="col-12">
@@ -195,10 +248,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="flex-grow-1">
                         <small class="mb-0">
                             <strong>Stock actual:</strong> <?php echo $producto['stock']; ?> unidades
-                            <?php if ($producto['stock'] <= 10): ?>
-                                <span class="badge bg-warning text-dark ms-2">Stock bajo</span>
-                            <?php elseif ($producto['stock'] == 0): ?>
+                            <?php 
+                            $stock_min = isset($producto['stock_minimo']) ? $producto['stock_minimo'] : 2;
+                            if ($producto['stock'] == 0): ?>
                                 <span class="badge bg-danger ms-2">Sin stock</span>
+                            <?php elseif ($producto['stock'] <= $stock_min): ?>
+                                <span class="badge bg-warning text-dark ms-2">Stock bajo</span>
                             <?php else: ?>
                                 <span class="badge bg-success ms-2">Stock disponible</span>
                             <?php endif; ?>

@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nombre = trim($_POST['nombre']);
     $precio = trim($_POST['precio']);
     $stock = trim($_POST['stock']);
+    $stock_minimo = isset($_POST['stock_minimo']) ? trim($_POST['stock_minimo']) : 2;
     $tipo = isset($_POST['tipo']) ? trim($_POST['tipo']) : '';
 
     // Validaciones
@@ -29,6 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $errores[] = "El stock debe ser un número válido mayor o igual a 0";
     }
     
+    if (!is_numeric($stock_minimo) || $stock_minimo < 1) {
+        $errores[] = "El stock mínimo debe ser un número válido mayor o igual a 1";
+    }
+    
     if (empty($tipo)) {
         $errores[] = "El tipo de producto es obligatorio";
     }
@@ -40,10 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (empty($errores)) {
-        $insert_sql = "INSERT INTO productos (nombre, precio, stock, tipo) 
-                       VALUES (?, ?, ?, ?)";
+        $descripcion = isset($_POST['descripcion']) ? trim($_POST['descripcion']) : null;
+        
+        $insert_sql = "INSERT INTO productos (nombre, precio, stock, stock_minimo, tipo, descripcion) 
+                       VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("sdis", $nombre, $precio, $stock, $tipo);
+        $stmt->bind_param("sdiiss", $nombre, $precio, $stock, $stock_minimo, $tipo, $descripcion);
         
         if ($stmt->execute()) {
             echo "<script>
@@ -67,13 +74,25 @@ $filtro = isset($_GET['filtro']) ? $_GET['filtro'] : '';
 $where_conditions = [];
 $params = [];
 
+// Verificar si existe la columna stock_minimo para los filtros
+$check_column = $conn->query("SHOW COLUMNS FROM productos LIKE 'stock_minimo'");
+$has_stock_minimo = $check_column->num_rows > 0;
+
 // Aplicar filtros de stock
 switch ($filtro) {
     case 'stock_alto':
-        $where_conditions[] = "stock > 10";
+        if ($has_stock_minimo) {
+            $where_conditions[] = "stock > stock_minimo";
+        } else {
+            $where_conditions[] = "stock > 10";
+        }
         break;
     case 'stock_bajo':
-        $where_conditions[] = "stock > 0 AND stock <= 10";
+        if ($has_stock_minimo) {
+            $where_conditions[] = "stock > 0 AND stock <= stock_minimo";
+        } else {
+            $where_conditions[] = "stock > 0 AND stock <= 10";
+        }
         break;
     case 'sin_stock':
         $where_conditions[] = "stock = 0";
@@ -139,7 +158,13 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                             <h6 class="text-uppercase">Stock Alto</h6>
                             <h4 class="mb-0">
                                 <?php 
-                                    $sql_stock_alto = "SELECT COUNT(*) as total FROM productos WHERE stock > 10";
+                                    // Verificar si existe la columna stock_minimo
+                                    $check_column = $conn->query("SHOW COLUMNS FROM productos LIKE 'stock_minimo'");
+                                    if ($check_column->num_rows > 0) {
+                                        $sql_stock_alto = "SELECT COUNT(*) as total FROM productos WHERE stock > stock_minimo";
+                                    } else {
+                                        $sql_stock_alto = "SELECT COUNT(*) as total FROM productos WHERE stock > 10";
+                                    }
                                     $res_stock_alto = $conn->query($sql_stock_alto);
                                     echo $res_stock_alto->fetch_assoc()['total'];
                                 ?>
@@ -158,7 +183,13 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                             <h6 class="text-uppercase">Stock Bajo</h6>
                             <h4 class="mb-0">
                                 <?php 
-                                    $sql_stock_bajo = "SELECT COUNT(*) as total FROM productos WHERE stock > 0 AND stock <= 10";
+                                    // Verificar si existe la columna stock_minimo
+                                    $check_column = $conn->query("SHOW COLUMNS FROM productos LIKE 'stock_minimo'");
+                                    if ($check_column->num_rows > 0) {
+                                        $sql_stock_bajo = "SELECT COUNT(*) as total FROM productos WHERE stock > 0 AND stock <= stock_minimo";
+                                    } else {
+                                        $sql_stock_bajo = "SELECT COUNT(*) as total FROM productos WHERE stock > 0 AND stock <= 10";
+                                    }
                                     $res_stock_bajo = $conn->query($sql_stock_bajo);
                                     echo $res_stock_bajo->fetch_assoc()['total'];
                                 ?>
@@ -202,10 +233,10 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                         $filtro_actual = isset($_GET['filtro']) ? $_GET['filtro'] : 'todos';
                         switch ($filtro_actual) {
                             case 'stock_alto':
-                                echo 'Stock alto (>10)';
+                                echo 'Stock alto (> mínimo)';
                                 break;
                             case 'stock_bajo':
-                                echo 'Stock bajo (1-10)';
+                                echo 'Stock bajo (≤ mínimo)';
                                 break;
                             case 'sin_stock':
                                 echo 'Sin stock';
@@ -217,8 +248,8 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
                         <li><a class="dropdown-item <?php echo ($filtro_actual == 'todos' || !isset($_GET['filtro'])) ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('todos')">Todos los productos</a></li>
-                        <li><a class="dropdown-item <?php echo $filtro_actual == 'stock_alto' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('stock_alto')">Stock alto (>10)</a></li>
-                        <li><a class="dropdown-item <?php echo $filtro_actual == 'stock_bajo' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('stock_bajo')">Stock bajo (1-10)</a></li>
+                        <li><a class="dropdown-item <?php echo $filtro_actual == 'stock_alto' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('stock_alto')">Stock alto (> mínimo)</a></li>
+                        <li><a class="dropdown-item <?php echo $filtro_actual == 'stock_bajo' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('stock_bajo')">Stock bajo (≤ mínimo)</a></li>
                         <li><a class="dropdown-item <?php echo $filtro_actual == 'sin_stock' ? 'active' : ''; ?>" href="#" onclick="filtrarProductos('sin_stock')">Sin stock</a></li>
                     </ul>
                 </div>
@@ -319,11 +350,12 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                                                     </div>
                                                     <div class="mt-2">
                                                         <?php 
-                                                            $clase_mobile = $row['stock'] > 10 ? 'bg-success' : ($row['stock'] > 0 ? 'bg-warning' : 'bg-danger');
+                                                            $stock_min = isset($row['stock_minimo']) ? $row['stock_minimo'] : 10;
+                                                            $clase_mobile = $row['stock'] > $stock_min ? 'bg-success' : ($row['stock'] > 0 ? 'bg-warning' : 'bg-danger');
                                                         ?>
                                                         <span class="badge <?php echo $clase_mobile; ?> rounded-pill">
                                                             <?php 
-                                                                if ($row['stock'] > 10) echo 'Disponible';
+                                                                if ($row['stock'] > $stock_min) echo 'Disponible';
                                                                 elseif ($row['stock'] > 0) echo 'Poco Stock';
                                                                 else echo 'Agotado';
                                                             ?>
@@ -339,18 +371,19 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                                     <div class="progress mx-auto" style="height: 20px; max-width: 150px;">
                                         <?php 
                                             $porcentaje = min(100, ($row['stock'] / 50) * 100); // Asumiendo 50 como stock máximo para la barra
-                                            $clase = $row['stock'] > 10 ? 'bg-success' : ($row['stock'] > 0 ? 'bg-warning' : 'bg-danger');
+                                            $stock_min = isset($row['stock_minimo']) ? $row['stock_minimo'] : 10;
+                                            $clase = $row['stock'] > $stock_min ? 'bg-success' : ($row['stock'] > 0 ? 'bg-warning' : 'bg-danger');
                                         ?>
                                         <div class="progress-bar <?php echo $clase; ?>" role="progressbar" style="width: <?php echo $porcentaje; ?>%" 
                                              aria-valuenow="<?php echo $row['stock']; ?>" aria-valuemin="0" aria-valuemax="50">
-                                            <?php echo $row['stock']; ?> unidades
+                                            <?php echo $row['stock']; ?> unid. <?php echo isset($row['stock_minimo']) ? "(Min: {$row['stock_minimo']})" : ""; ?>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="text-center d-none d-md-table-cell">
                                     <span class="badge <?php echo $clase; ?> rounded-pill">
                                         <?php 
-                                            if ($row['stock'] > 10) echo 'Disponible';
+                                            if ($row['stock'] > $stock_min) echo 'Disponible';
                                             elseif ($row['stock'] > 0) echo 'Poco Stock';
                                             else echo 'Agotado';
                                         ?>
@@ -476,9 +509,9 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                         </div>
                     </div>
                     
-                    <!-- Tipo de producto -->
+                    <!-- Tipo de producto y Stock mínimo -->
                     <div class="row g-3">
-                        <div class="col-12">
+                        <div class="col-12 col-sm-6">
                             <div class="mb-3">
                                 <label for="tipo" class="form-label fw-semibold">
                                     <i class="fas fa-store text-primary me-1"></i>
@@ -492,6 +525,42 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                                     <option value="spa">Spa</option>
                                 </select>
                                 <div class="invalid-feedback">Por favor seleccione un tipo de producto.</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div class="mb-3">
+                                <label for="stock_minimo" class="form-label fw-semibold">
+                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                    Stock mínimo <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light d-none d-sm-flex"><i class="fas fa-level-down-alt"></i></span>
+                                    <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" 
+                                           min="1" value="2" placeholder="2" required>
+                                    <span class="input-group-text bg-light text-muted small">unid.</span>
+                                </div>
+                                <div class="form-text text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Nivel mínimo para alertas de stock bajo
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Descripción del producto -->
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="descripcion" class="form-label fw-semibold">
+                                    <i class="fas fa-align-left text-muted me-1"></i>
+                                    Descripción
+                                </label>
+                                <textarea class="form-control" id="descripcion" name="descripcion" 
+                                          rows="3" placeholder="Descripción detallada del producto..."></textarea>
+                                <div class="form-text text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Agrega detalles adicionales sobre el producto (opcional)
+                                </div>
                             </div>
                         </div>
                     </div>
