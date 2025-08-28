@@ -27,17 +27,21 @@ if (!$mascota) {
 
 // Procesar formulario de nueva historia clínica
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['crear_historia'])) {
+    // Asegurarnos de enviar el contenido como JSON
     header('Content-Type: application/json');
     
-    $motivo_atencion = trim($_POST['motivo_atencion']);
-    $anamnesis = trim($_POST['anamnesis']);
-    $descripcion_caso = trim($_POST['descripcion_caso']);
-    $temperatura = floatval($_POST['temperatura']);
-    $peso = floatval($_POST['peso']);
+    // Log para depuración - comentar o eliminar en producción
+    error_log("Procesando nueva historia clínica para mascota ID: $id_mascota");
+    
+    $motivo_atencion = trim($_POST['motivo_atencion'] ?? '');
+    $anamnesis = trim($_POST['anamnesis'] ?? '');
+    $descripcion_caso = trim($_POST['descripcion_caso'] ?? '');
+    $temperatura = isset($_POST['temperatura']) ? floatval($_POST['temperatura']) : 0;
+    $peso = isset($_POST['peso']) ? floatval($_POST['peso']) : 0;
     $frecuencia_cardiaca = !empty($_POST['frecuencia_cardiaca']) ? intval($_POST['frecuencia_cardiaca']) : null;
-    $tlc_tiempo_llenado = trim($_POST['tlc_tiempo_llenado']);
-    $dth_deshidratacion = trim($_POST['dth_deshidratacion']);
-    $examen_clinico = trim($_POST['examen_clinico']);
+    $tlc_tiempo_llenado = trim($_POST['tlc_tiempo_llenado'] ?? '');
+    $dth_deshidratacion = trim($_POST['dth_deshidratacion'] ?? '');
+    $examen_clinico = trim($_POST['examen_clinico'] ?? '');
     
     // Validaciones
     $errores = [];
@@ -294,8 +298,9 @@ $stmt_historiales->close();
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="formHistoriaClinica">
+                <form id="formHistoriaClinica" action="modules/historia_clinica.php?id_mascota=<?php echo $id_mascota; ?>" method="post">
                     <input type="hidden" name="crear_historia" value="1">
+                    <input type="hidden" name="id_mascota" value="<?php echo $id_mascota; ?>">
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -396,8 +401,11 @@ $(document).ready(function() {
         
         const formData = new FormData(this);
         
+        // Agregar la URL actual para poder redireccionar de vuelta
+        formData.append('current_url', window.location.href);
+        
         $.ajax({
-            url: 'modules/historia_clinica.php?id_mascota=<?php echo $id_mascota; ?>',
+            url: $(this).attr('action'),
             method: 'POST',
             data: formData,
             processData: false,
@@ -405,6 +413,7 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 $('#formHistoriaClinica').data('submitting', false);
+                console.log('Respuesta del servidor:', response);
                 
                 if (response.success) {
                     // Ocultar el modal antes de mostrar el mensaje
@@ -413,9 +422,16 @@ $(document).ready(function() {
                     // Limpiar el formulario para futuras entradas
                     $('#formHistoriaClinica')[0].reset();
                     
-                    // Recargar la página para mostrar la nueva historia clínica
-                    // Usamos una carga AJAX para cargar solo el contenido necesario sin recargar toda la página
-                    window.location.href = 'index.php?module=historia_clinica&id_mascota=<?php echo $id_mascota; ?>';
+                    // Mostrar mensaje de éxito y luego recargar la página actual
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Historia clínica guardada correctamente',
+                        confirmButtonColor: '#198754'
+                    }).then(() => {
+                        // Recargar la página actual manteniendo la URL exactamente igual
+                        window.location.reload();
+                    });
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -425,8 +441,10 @@ $(document).ready(function() {
                     });
                 }
             },
-            error: function(xhr) {
+            error: function(xhr, status, error) {
                 $('#formHistoriaClinica').data('submitting', false);
+                console.error('Error en la petición:', status, error);
+                console.log('Respuesta del servidor:', xhr.responseText);
                 
                 let errorMsg = 'Error al guardar la historia clínica';
                 
@@ -439,7 +457,12 @@ $(document).ready(function() {
                     icon: 'error',
                     title: 'Error',
                     text: errorMsg,
-                    confirmButtonColor: '#dc3545'
+                    confirmButtonColor: '#dc3545',
+                    footer: 'Importante: A pesar del error, es posible que la historia se haya guardado. Intente refrescar la página.'
+                }).then(() => {
+                    // En caso de error, intentamos recargar la página de todos modos
+                    // ya que es posible que la historia se haya guardado correctamente
+                    window.location.reload();
                 });
             }
         });
