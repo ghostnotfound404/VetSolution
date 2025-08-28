@@ -74,7 +74,7 @@ if (isset($_POST['action'])) {
                     $searchTerm = "%$termino%";
                     
                     // Buscar productos
-                    $sql_productos = "SELECT id_producto as id, nombre, precio, stock, 'producto' as tipo
+                    $sql_productos = "SELECT id_producto as id, nombre, precio, stock, 'producto' as tipo, tipo as tipo_negocio
                                      FROM productos 
                                      WHERE stock > 0 AND (nombre LIKE ? OR descripcion LIKE ?)
                                      ORDER BY nombre 
@@ -97,7 +97,7 @@ if (isset($_POST['action'])) {
                     $stmt_productos->close();
                     
                     // Buscar servicios
-                    $sql_servicios = "SELECT id_servicio as id, nombre, precio, NULL as stock, 'servicio' as tipo
+                    $sql_servicios = "SELECT id_servicio as id, nombre, precio, NULL as stock, 'servicio' as tipo, tipo as tipo_negocio
                                      FROM servicios 
                                      WHERE nombre LIKE ? OR descripcion LIKE ?
                                      ORDER BY nombre 
@@ -193,9 +193,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             foreach ($items as $item) {
                 $subtotal = $item['cantidad'] * $item['precio'];
                 
-                $insert_venta_sql = "INSERT INTO ventas (id_mascota, tipo_item, id_item, cantidad, precio_unitario, subtotal, medio_pago, fecha_venta) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $insert_venta_sql = "INSERT INTO ventas (id_mascota, tipo_item, id_item, cantidad, precio_unitario, subtotal, medio_pago, tipo_negocio, fecha_venta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt_venta = $conn->prepare($insert_venta_sql);
-                $stmt_venta->bind_param("isiiddss", $id_mascota, $item['tipo'], $item['id'], $item['cantidad'], $item['precio'], $subtotal, $medio_pago, $fecha_venta);
+                $stmt_venta->bind_param("isiiddsss", $id_mascota, $item['tipo'], $item['id'], $item['cantidad'], $item['precio'], $subtotal, $medio_pago, $item['tipo_negocio'], $fecha_venta);
                 $stmt_venta->execute();
                 $stmt_venta->close();
 
@@ -404,17 +404,9 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                 </div>
             </div>
 
-            <!-- Tipo y Medio de Pago -->
+            <!-- Medio de Pago -->
             <div class="row mb-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Tipo<span class="text-danger">*</span></label>
-                    <div class="mt-2">
-                        <button type="button" class="btn btn-success btn-sm me-2" id="btnClinica">Clínica</button>
-                        <button type="button" class="btn btn-success btn-sm me-2" id="btnFarmacia">Farmacia</button>
-                        <button type="button" class="btn btn-success btn-sm" id="btnPetshop">Petshop</button>
-                    </div>
-                </div>
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <label class="form-label fw-bold">Medio de Pago <span class="text-danger">*</span></label>
                     <div class="mt-2">
                         <button type="button" class="btn btn-success btn-sm me-2" data-pago="Efectivo">Efectivo</button>
@@ -659,18 +651,9 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
     $(document).ready(function() {
         let carritoItems = [];
         let productoTemp = null;
-        let tipoSeleccionado = '';
         let medioPagoSeleccionado = '';
         let timeoutMascota = null;
         let timeoutProducto = null;
-
-        // Seleccionar tipo
-        $('#btnClinica, #btnFarmacia, #btnPetshop').click(function() {
-            tipoSeleccionado = $(this).text();
-            $('#btnClinica, #btnFarmacia, #btnPetshop').removeClass('btn-primary').addClass('btn-success');
-            $(this).removeClass('btn-success').addClass('btn-primary');
-            validarFormulario();
-        });
 
         // Seleccionar medio de pago
         $('[data-pago]').click(function() {
@@ -847,9 +830,9 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
 
         // Añadir item al carrito
         $('#btnAgregarItem').click(function() {
-            // Validar que se haya seleccionado tipo
-            if (!tipoSeleccionado) {
-                Swal.fire('Error', 'Debe seleccionar un tipo (Clínica, Farmacia o Petshop) primero', 'error');
+            // El tipo ahora viene del producto/servicio seleccionado
+            if (!productoTemp || !productoTemp.tipo_negocio) {
+                Swal.fire('Error', 'Debe seleccionar un producto o servicio primero', 'error');
                 return;
             }
             
@@ -895,6 +878,7 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                     precio: productoTemp.precio,
                     cantidad: cantidad,
                     tipo: productoTemp.tipo,
+                    tipo_negocio: productoTemp.tipo_negocio,
                     stock: productoTemp.stock
                 });
                 Swal.fire('Éxito', 'Producto agregado al carrito', 'success');
@@ -991,10 +975,15 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                 let html = '';
                 carritoItems.forEach((item, index) => {
                     const subtotal = item.cantidad * item.precio;
+                    const tipoBadge = item.tipo_negocio === 'clinica' ? 'primary' : 
+                                     (item.tipo_negocio === 'spa' ? 'info' : 'warning');
                     html += `
                         <tr>
                             <td>${item.nombre}</td>
-                            <td><span class="badge bg-${item.tipo === 'producto' ? 'primary' : 'success'}">${item.tipo}</span></td>
+                            <td>
+                                <span class="badge bg-${item.tipo === 'producto' ? 'primary' : 'success'} me-1">${item.tipo}</span>
+                                <span class="badge bg-${tipoBadge}">${item.tipo_negocio}</span>
+                            </td>
                             <td>${item.cantidad}</td>
                             <td>S/ ${item.precio.toFixed(2)}</td>
                             <td>S/ ${subtotal.toFixed(2)}</td>
@@ -1023,9 +1012,8 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
             const mascotaId = $('#id_mascota').val();
             const medioPago = $('#medio_pago').val();
             const tieneItems = carritoItems.length > 0;
-            const tipoValido = tipoSeleccionado !== '';
             
-            const esValido = mascotaId && medioPago && tieneItems && tipoValido;
+            const esValido = mascotaId && medioPago && tieneItems;
             $('#btnRegistrarVenta').prop('disabled', !esValido);
         }
 
@@ -1092,11 +1080,9 @@ $total_monto_ventas = $total_ventas_data['total_monto'];
                         $('#resultados_productos').hide();
                         productoTemp = null;
                         
-                        // Resetear selecciones de tipo y medio de pago
-                        tipoSeleccionado = '';
+                        // Resetear selecciones de medio de pago
                         medioPagoSeleccionado = '';
                         $('#medio_pago').val('');
-                        $('#btnClinica, #btnFarmacia, #btnPetshop').removeClass('btn-primary').addClass('btn-success');
                         $('[data-pago]').removeClass('btn-primary').addClass('btn-success');
                         
                         Swal.fire('Cancelado', 'Se ha limpiado el formulario', 'success');

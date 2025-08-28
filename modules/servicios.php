@@ -10,6 +10,7 @@ $buscar = isset($_GET['buscar_servicio']) ? trim($_GET['buscar_servicio']) : '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nombre = trim($_POST['nombre']);
     $precio = trim($_POST['precio']);
+    $tipo = isset($_POST['tipo']) ? trim($_POST['tipo']) : '';
 
     // Validaciones
     $errores = [];
@@ -21,11 +22,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (empty($precio) || $precio <= 0) {
         $errores[] = "El precio debe ser mayor a 0";
     }
+    
+    if (empty($tipo)) {
+        $errores[] = "El tipo de servicio es obligatorio";
+    }
+    
+    // Validar tipo
+    $tipos_validos = ['clinica', 'farmacia', 'petshop', 'spa'];
+    if (!in_array(strtolower($tipo), $tipos_validos)) {
+        $errores[] = "El tipo seleccionado no es válido";
+    }
 
     if (empty($errores)) {
-        $insert_sql = "INSERT INTO servicios (nombre, precio) VALUES (?, ?)";
+        $insert_sql = "INSERT INTO servicios (nombre, precio, tipo) VALUES (?, ?, ?)";
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("sd", $nombre, $precio);
+        $stmt->bind_param("sds", $nombre, $precio, $tipo);
         
         if ($stmt->execute()) {
             echo "<script>
@@ -230,6 +241,22 @@ $paginationInfo = $serviciosData['pagination'];
                                 <div class="input-group">
                                     <span class="input-group-text">S/.</span>
                                     <input type="number" class="form-control" id="precio_servicio" name="precio" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="tipo_servicio" class="form-label">Tipo <span class="text-danger">*</span></label>
+                                <select class="form-select" id="tipo_servicio" name="tipo" required>
+                                    <option value="" disabled selected>Seleccione un tipo...</option>
+                                    <option value="clinica">Clínica</option>
+                                    <option value="farmacia">Farmacia</option>
+                                    <option value="petshop">PetShop</option>
+                                    <option value="spa">Spa</option>
+                                </select>
+                                <div class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Seleccione a qué área de negocio pertenece este servicio
                                 </div>
                             </div>
                         </div>

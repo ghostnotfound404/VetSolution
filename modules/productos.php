@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nombre = trim($_POST['nombre']);
     $precio = trim($_POST['precio']);
     $stock = trim($_POST['stock']);
+    $tipo = isset($_POST['tipo']) ? trim($_POST['tipo']) : '';
 
     // Validaciones
     $errores = [];
@@ -27,12 +28,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!is_numeric($stock) || $stock < 0) {
         $errores[] = "El stock debe ser un número válido mayor o igual a 0";
     }
+    
+    if (empty($tipo)) {
+        $errores[] = "El tipo de producto es obligatorio";
+    }
+
+    // Validar tipo
+    $tipos_validos = ['clinica', 'farmacia', 'petshop', 'spa'];
+    if (!in_array(strtolower($tipo), $tipos_validos)) {
+        $errores[] = "El tipo seleccionado no es válido";
+    }
 
     if (empty($errores)) {
-        $insert_sql = "INSERT INTO productos (nombre, precio, stock) 
-                       VALUES (?, ?, ?)";
+        $insert_sql = "INSERT INTO productos (nombre, precio, stock, tipo) 
+                       VALUES (?, ?, ?, ?)";
         $stmt = $conn->prepare($insert_sql);
-        $stmt->bind_param("sdi", $nombre, $precio, $stock);
+        $stmt->bind_param("sdis", $nombre, $precio, $stock, $tipo);
         
         if ($stmt->execute()) {
             echo "<script>
@@ -465,6 +476,26 @@ $total_records = $pagination_result['pagination']['total_records'] ?? 0;
                         </div>
                     </div>
                     
+                    <!-- Tipo de producto -->
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="tipo" class="form-label fw-semibold">
+                                    <i class="fas fa-store text-primary me-1"></i>
+                                    Tipo <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="tipo" name="tipo" required>
+                                    <option value="" disabled selected>Seleccione un tipo...</option>
+                                    <option value="clinica">Clínica</option>
+                                    <option value="farmacia">Farmacia</option>
+                                    <option value="petshop">PetShop</option>
+                                    <option value="spa">Spa</option>
+                                </select>
+                                <div class="invalid-feedback">Por favor seleccione un tipo de producto.</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Información adicional -->
                     <div class="row">
                         <div class="col-12">
