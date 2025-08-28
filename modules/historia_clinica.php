@@ -156,13 +156,14 @@ $stmt_historiales->close();
             <!-- Tarjeta de información de la mascota -->
             <div class="card mb-4">
                 <div class="card-body p-3">
-                    <h3 class="mb-3 text-center"><?php echo htmlspecialchars($mascota['nombre']); ?></h3>
+                    
                     
                     <div class="d-flex align-items-center justify-content-center mb-3">
                         <div class="bg-light rounded-circle p-2 text-center" style="width: 50px; height: 50px;">
                             <i class="fas fa-paw text-primary fa-lg"></i>
                         </div>
                     </div>
+                    <h3 class="mb-3 text-center"><?php echo htmlspecialchars($mascota['nombre']); ?></h3>
                     
                     <div class="mb-3">
                         <p class="mb-1"><strong>N° Historia Clínica:</strong> <?php echo $mascota['id_mascota']; ?></p>
@@ -201,33 +202,7 @@ $stmt_historiales->close();
         <div class="col-md-8">
             <!-- Contenedor para las tarjetas de resumen -->
             <div class="row mb-4">
-                <div class="col-xl-6 col-md-6">
-                    <div class="card bg-primary text-white mb-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase">Total Consultas</h6>
-                                    <h4 class="mb-0"><?php echo $total_consultas; ?></h4>
-                                </div>
-                                <i class="fas fa-notes-medical fa-2x"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-6 col-md-6">
-                    <div class="card bg-info text-white mb-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase">Consultas Este Mes</h6>
-                                    <h4 class="mb-0"><?php echo $consultas_mes; ?></h4>
-                                </div>
-                                <i class="fas fa-calendar-alt fa-2x"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-6 col-md-6">
+                <div class="col-md-12">
                     <div class="card bg-success text-white mb-4">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -240,24 +215,9 @@ $stmt_historiales->close();
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-6 col-md-6">
-                    <div class="card bg-warning text-white mb-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase">Última Temperatura</h6>
-                                    <h4 class="mb-0"><?php echo $ultima_temperatura ? number_format($ultima_temperatura, 1) . '°C' : 'N/A'; ?></h4>
-                                </div>
-                                <i class="fas fa-thermometer-half fa-2x"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
-
-    <!-- Las tarjetas de resumen ahora están integradas en la estructura vertical -->
 
     <!-- Lista de Historiales -->
     <div class="card">
